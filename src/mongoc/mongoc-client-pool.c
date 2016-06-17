@@ -46,6 +46,9 @@ struct _mongoc_client_pool_t
 #endif
    mongoc_apm_callbacks_t  apm_callbacks;
    void                   *apm_context;
+
+   bson_t                  metadata;
+
    int32_t                 error_api_version;
 };
 
@@ -106,6 +109,9 @@ mongoc_client_pool_new (const mongoc_uri_t *uri)
 
    topology = mongoc_topology_new(uri, false);
    pool->topology = topology;
+
+   bson_init (&pool->metadata);
+
    pool->error_api_version = MONGOC_ERROR_API_VERSION_LEGACY;
 
    b = mongoc_uri_get_options(pool->uri);
@@ -146,6 +152,8 @@ mongoc_client_pool_destroy (mongoc_client_pool_t *pool)
    mongoc_uri_destroy(pool->uri);
    mongoc_mutex_destroy(&pool->mutex);
    mongoc_cond_destroy(&pool->cond);
+
+   bson_destroy (&pool->metadata);
 
 #ifdef MONGOC_ENABLE_SSL
    _mongoc_ssl_opts_cleanup (&pool->ssl_opts);

@@ -86,6 +86,8 @@ struct _mongoc_client_t
    mongoc_apm_callbacks_t     apm_callbacks;
    void                      *apm_context;
 
+   bson_t                     metadata;
+
    int32_t                    error_api_version;
    bool                       error_api_set;
 };
