@@ -1892,3 +1892,18 @@ mongoc_client_set_error_api (mongoc_client_t *client,
 
    return true;
 }
+
+bool
+mongoc_client_set_application (mongoc_client_t              *client,
+                               const char                   *application_name)
+{
+   return false;
+}
+
+bool mongoc_client_set_metadata (mongoc_client_t              *client,
+                                 const char                   *driver_name,
+                                 const char                   *version,
+                                 const char                   *platform)
+{
+   return false;
+}
