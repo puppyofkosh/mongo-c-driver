@@ -18,6 +18,10 @@
 #ifndef MONGOC_CONFIG_H
 #define MONGOC_CONFIG_H
 
+/* basic idea */
+#define MONGOC_CFLAGS "@CFLAGS@"
+
+#define MONGOC_CC "@CC@"
 
 /*
  * MONGOC_ENABLE_SSL_SECURE_CHANNEL is set from configure to determine if we are

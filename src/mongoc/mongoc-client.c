@@ -23,6 +23,7 @@
 
 #include "mongoc-cursor-array-private.h"
 #include "mongoc-client-private.h"
+#include "mongoc-client-metadata-private.h"
 #include "mongoc-collection-private.h"
 #include "mongoc-config.h"
 #include "mongoc-counters-private.h"
@@ -40,6 +41,8 @@
 #include "mongoc-util-private.h"
 #include "mongoc-set-private.h"
 #include "mongoc-log.h"
+#include "mongoc-version.h"
+
 
 #ifdef MONGOC_ENABLE_SSL
 #include "mongoc-stream-tls.h"
@@ -740,6 +743,7 @@ _mongoc_client_new_from_uri (const mongoc_uri_t *uri, mongoc_topology_t *topolog
    client->topology = topology;
 
    bson_init (&client->metadata);
+   mongoc_client_metadata_init (&client->metadata);
 
    client->error_api_version = MONGOC_ERROR_API_VERSION_LEGACY;
    client->error_api_set = false;
@@ -1901,7 +1905,60 @@ bool
 mongoc_client_set_application (mongoc_client_t              *client,
                                const char                   *application_name)
 {
-   return false;
+   bson_iter_t iter;
+   bson_iter_t meta_iter;
+   bson_t application;
+   bson_t* metadata;
+   const char* app_field = METADATA_APPLICATION_FIELD;
+   int application_name_len;
+
+   BSON_ASSERT (client);
+   BSON_ASSERT (application_name);
+   metadata = &client->metadata;
+
+   BSON_ASSERT(bson_iter_init_find (&iter, metadata, METADATA_FIELD) &&
+               BSON_ITER_HOLDS_DOCUMENT (&iter) &&
+               bson_iter_recurse (&iter, &meta_iter));
+
+   /* TODO: Must look for meta field */
+   /* Check if we've already added application info to the metadata */
+   if (bson_iter_init_find (&meta_iter, metadata, app_field)) {
+      return false;
+   }
+
+   application_name_len = strlen (application_name);
+
+   if (application_name_len > METADATA_APPLICATION_NAME_MAX_LENGTH) {
+      return false;
+   }
+
+   /* FIXME: The spec said something like max size was 512 bytes */
+   /* FIXME: This wouldn't actually work vv I dont think*/
+   if (application_name_len + metadata->len > METADATA_MAX_SIZE) {
+      /* FIXME: Would this actually work? Isn't there the overhead of storing
+         the key as well? I think this computation might be more complicated
+         or we might have to make a copy of the metadata every time we do this
+         (uck)
+
+         I think it'd actually be like
+         1 for what type of thing it is
+         + 1 on strings for null terminator
+         + 4 for size which gets added
+         1 + (application_name_len + 1) + (key_len + 1) + 4
+         but doing this is also hackish. Maybe there's a macro somewhere?
+       */
+      return false;
+   }
+
+
+   bson_append_document_begin(metadata, app_field, -1, &application);
+   bson_append_utf8 (&application,
+                     METADATA_APPLICATION_NAME_FIELD,
+                     strlen (METADATA_APPLICATION_NAME_FIELD),
+                     application_name, application_name_len);
+   bson_append_document_end(metadata, &application);
+
+   return true;
 }
 
 bool mongoc_client_set_metadata (mongoc_client_t              *client,
@@ -1910,4 +1967,32 @@ bool mongoc_client_set_metadata (mongoc_client_t              *client,
                                  const char                   *platform)
 {
    return false;
+}
+
+
+/* FIXME: Why's this return bool? */
+/* FIXME: This will go in its own file some day */
+bool mongoc_client_metadata_init (bson_t* metadata)
+{
+   BSON_ASSERT (metadata);
+
+
+   /* see mongoc-config.h.in for all this" */
+   BCON_APPEND (metadata,
+                METADATA_FIELD, "{",
+                "driver", "{",
+                "name", "mongoc",
+                "version", MONGOC_VERSION_S,
+                "}",
+
+                "os", "{",
+                "name", "vax",
+                "architecture", "powerpc",
+                "version", "6",
+                "}",
+
+                "platform", "CC=" MONGOC_CC "CLFAGS=" MONGOC_CFLAGS,
+
+                "}");
+   return true;
 }
