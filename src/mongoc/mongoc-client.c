@@ -1991,7 +1991,7 @@ bool mongoc_client_metadata_init (bson_t* metadata)
                 "version", "6",
                 "}",
 
-                "platform", "CC=" MONGOC_CC "CLFAGS=" MONGOC_CFLAGS,
+                "platform", "CC=" MONGOC_CC " " "CLFAGS=" MONGOC_CFLAGS,
 
                 "}");
    return true;

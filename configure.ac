@@ -14,6 +14,9 @@ AC_SUBST(ACLOCAL_AMFLAGS, "-I build/autotools")
 MONGOC_API_VERSION=1.0
 AC_SUBST(MONGOC_API_VERSION)
 
+MONGOC_CONFIGURE_ARGS="$ac_configure_args"
+AC_SUBST(MONGOC_CONFIGURE_ARGS)
+
 m4_include([build/autotools/CheckCompiler.m4])
 m4_include([build/autotools/CheckProgs.m4])
 m4_include([build/autotools/CheckHost.m4])
