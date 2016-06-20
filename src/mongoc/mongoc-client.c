@@ -1941,7 +1941,7 @@ mongoc_client_metadata_set_application (bson_t               *metadata,
       but that seems too inflexible
    */
 
-   /* Do a cursory check as to whether or not the metadata doc will be too big*/
+   /* Do a cursory check: whether or not the metadata doc will be too big */
    if (application_name_len + metadata->len > METADATA_MAX_SIZE) {
       /* Just because this check passes doesn't mean we WON'T go over size
          because of the extra bson overhead

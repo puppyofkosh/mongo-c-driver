@@ -211,7 +211,7 @@ test_mongoc_client_pool_ssl_disabled (void)
 #endif
 
 static void
-test_mongoc_client_pool_set_metadata ()
+test_mongoc_client_pool_metadata ()
 {
    mongoc_client_pool_t *pool;
    mongoc_uri_t *uri;
@@ -241,7 +241,7 @@ test_client_pool_install (TestSuite *suite)
    TestSuite_Add (suite, "/ClientPool/min_size_dispose", test_mongoc_client_pool_min_size_dispose);
    TestSuite_Add (suite, "/ClientPool/set_max_size", test_mongoc_client_pool_set_max_size);
    TestSuite_Add (suite, "/ClientPool/set_min_size", test_mongoc_client_pool_set_min_size);
-   TestSuite_Add (suite, "/ClientPool/metadata", test_mongoc_client_pool_set_metadata);
+   TestSuite_Add (suite, "/ClientPool/metadata", test_mongoc_client_pool_metadata);
 
 #ifndef MONGOC_ENABLE_SSL
    TestSuite_Add (suite, "/ClientPool/ssl_disabled", test_mongoc_client_pool_ssl_disabled);

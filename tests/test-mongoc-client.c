@@ -1693,7 +1693,7 @@ test_ssl_reconnect_pooled (void)
 #endif
 
 static void
-test_mongoc_client_set_metadata ()
+test_mongoc_client_metadata ()
 {
 
    mongoc_client_t *client;
@@ -1761,7 +1761,7 @@ test_client_install (TestSuite *suite)
    TestSuite_Add (suite, "/Client/database_names", test_get_database_names);
    TestSuite_AddFull (suite, "/Client/connect/uds", test_mongoc_client_unix_domain_socket, NULL, NULL, test_framework_skip_if_no_uds);
    TestSuite_Add (suite, "/Client/mismatched_me", test_mongoc_client_mismatched_me);
-   TestSuite_Add (suite, "/Client/metadata", test_mongoc_client_set_metadata);
+   TestSuite_Add (suite, "/Client/metadata", test_mongoc_client_metadata);
 
 #ifdef TODO_CDRIVER_689
    TestSuite_Add (suite, "/Client/wire_version", test_wire_version);
