@@ -22,10 +22,10 @@
 
 /* MONGOC_CFLAGS is set from config based on what compiler options were used
    to compile mongoc */
-#define MONGOC_CFLAGS "@CFLAGS@"
+#define MONGOC_CFLAGS "@MONGOC_CFLAGS@"
 
 /* MONGOC_CC is used to determine what C compiler was used to compile mongoc */
-#define MONGOC_CC "@CC@"
+#define MONGOC_CC "@MONGOC_CC@"
 
 /* The arguments which were passed to ./configure */
 #define MONGOC_CONFIGURE_ARGS "@MONGOC_CONFIGURE_ARGS@"
