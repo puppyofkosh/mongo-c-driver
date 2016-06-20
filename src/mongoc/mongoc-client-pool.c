@@ -110,7 +110,7 @@ mongoc_client_pool_new (const mongoc_uri_t *uri)
    topology = mongoc_topology_new(uri, false);
    pool->topology = topology;
 
-   bson_init (&pool->metadata);
+   mongoc_client_metadata_init (&pool->metadata);
 
    pool->error_api_version = MONGOC_ERROR_API_VERSION_LEGACY;
 

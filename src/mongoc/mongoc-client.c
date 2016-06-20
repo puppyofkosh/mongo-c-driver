@@ -19,11 +19,11 @@
 #ifndef _WIN32
 # include <netdb.h>
 # include <netinet/tcp.h>
+# include <sys/utsname.h>
 #endif
 
 #include "mongoc-cursor-array-private.h"
 #include "mongoc-client-private.h"
-#include "mongoc-client-metadata-private.h"
 #include "mongoc-collection-private.h"
 #include "mongoc-config.h"
 #include "mongoc-counters-private.h"
@@ -742,7 +742,6 @@ _mongoc_client_new_from_uri (const mongoc_uri_t *uri, mongoc_topology_t *topolog
    client->initiator_data = client;
    client->topology = topology;
 
-   bson_init (&client->metadata);
    mongoc_client_metadata_init (&client->metadata);
 
    client->error_api_version = MONGOC_ERROR_API_VERSION_LEGACY;
@@ -1905,22 +1904,28 @@ bool
 mongoc_client_set_application (mongoc_client_t              *client,
                                const char                   *application_name)
 {
+   return mongoc_client_metadata_set_application (&client->metadata,
+                                                  application_name);
+}
+
+bool
+mongoc_client_metadata_set_application (bson_t               *metadata,
+                                        const char           *application_name)
+{
    bson_iter_t iter;
    bson_iter_t meta_iter;
    bson_t application;
-   bson_t* metadata;
+   bson_t metadata_copy;
    const char* app_field = METADATA_APPLICATION_FIELD;
    int application_name_len;
 
-   BSON_ASSERT (client);
+   BSON_ASSERT (metadata);
    BSON_ASSERT (application_name);
-   metadata = &client->metadata;
 
    BSON_ASSERT(bson_iter_init_find (&iter, metadata, METADATA_FIELD) &&
                BSON_ITER_HOLDS_DOCUMENT (&iter) &&
                bson_iter_recurse (&iter, &meta_iter));
 
-   /* TODO: Must look for meta field */
    /* Check if we've already added application info to the metadata */
    if (bson_iter_init_find (&meta_iter, metadata, app_field)) {
       return false;
@@ -1932,24 +1937,24 @@ mongoc_client_set_application (mongoc_client_t              *client,
       return false;
    }
 
-   /* FIXME: The spec said something like max size was 512 bytes */
-   /* FIXME: This wouldn't actually work vv I dont think*/
-   if (application_name_len + metadata->len > METADATA_MAX_SIZE) {
-      /* FIXME: Would this actually work? Isn't there the overhead of storing
-         the key as well? I think this computation might be more complicated
-         or we might have to make a copy of the metadata every time we do this
-         (uck)
+   /* Another option to this check is to just rely on the bson spec and
+      do some computation like name_len + 1 + key_len +
+      metadata->len + 1 + 1 + 4 > METADATA_MAX_SIZE
+      but that seems too inflexible
+   */
 
-         I think it'd actually be like
-         1 for what type of thing it is
-         + 1 on strings for null terminator
-         + 4 for size which gets added
-         1 + (application_name_len + 1) + (key_len + 1) + 4
-         but doing this is also hackish. Maybe there's a macro somewhere?
+   /* Do a cursory check as to whether or not the metadata doc will be too big*/
+   if (application_name_len + metadata->len > METADATA_MAX_SIZE) {
+      /* Just because this check passes doesn't mean we WON'T go over size
+         because of the extra bson overhead
        */
       return false;
    }
 
+   /* Make a copy of the metadata in case when adding the application
+      field we do go over size
+    */
+   bson_copy_to (metadata, &metadata_copy);
 
    bson_append_document_begin(metadata, app_field, -1, &application);
    bson_append_utf8 (&application,
@@ -1957,6 +1962,18 @@ mongoc_client_set_application (mongoc_client_t              *client,
                      strlen (METADATA_APPLICATION_NAME_FIELD),
                      application_name, application_name_len);
    bson_append_document_end(metadata, &application);
+
+   /* If the metadata doc is now oversized, we switch back to the copy
+      and return false */
+   if (metadata->len > METADATA_MAX_SIZE) {
+      bson_destroy (metadata);
+      bson_steal (metadata, &metadata_copy);
+
+      return false;
+   } else {
+      /* We no longer need the copy */
+      bson_destroy (&metadata_copy);
+   }
 
    return true;
 }
@@ -1969,13 +1986,46 @@ bool mongoc_client_set_metadata (mongoc_client_t              *client,
    return false;
 }
 
-
-/* FIXME: Why's this return bool? */
-/* FIXME: This will go in its own file some day */
-bool mongoc_client_metadata_init (bson_t* metadata)
+#ifndef _WIN32
+static bool get_system_info (const char** name, const char** architecture,
+                             const char** version)
 {
-   BSON_ASSERT (metadata);
+   struct utsname sysinfo;
+   int res;
 
+   res = uname (&sysinfo);
+
+   if (res != 0) {
+      return false;
+   }
+
+   if (name) {
+      *name = sysinfo.sysname;
+   }
+
+   if (architecture) {
+      *architecture = sysinfo.machine;
+   }
+
+   if (version) {
+      *version = sysinfo.version;
+   }
+
+   return true;
+}
+#endif
+
+
+void mongoc_client_metadata_init (bson_t* metadata)
+{
+   const char* name = "";
+   const char* architecture = "";
+   const char* version = "";
+
+   BSON_ASSERT (metadata);
+   bson_init (metadata);
+
+   get_system_info (&name, &architecture, &version);
 
    /* see mongoc-config.h.in for all this" */
    BCON_APPEND (metadata,
@@ -1986,13 +2036,15 @@ bool mongoc_client_metadata_init (bson_t* metadata)
                 "}",
 
                 "os", "{",
-                "name", "vax",
-                "architecture", "powerpc",
-                "version", "6",
+                "name", name,
+                "architecture", architecture,
+                "version", version,
                 "}",
 
-                "platform", "CC=" MONGOC_CC " " "CLFAGS=" MONGOC_CFLAGS,
+                "platform",
+                "CC=" MONGOC_CC " "
+                "CLFAGS=" MONGOC_CFLAGS " "
+                "./configure " MONGOC_CONFIGURE_ARGS,
 
                 "}");
-   return true;
 }

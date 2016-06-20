@@ -1705,7 +1705,7 @@ test_mongoc_client_set_metadata ()
    mongoc_client_set_application (client, "hallo thar");
 
    metadata = bson_as_json (&client->metadata, NULL);
-   fprintf (stderr, "%s\n", metadata);
+   fprintf (stderr, "\n\n\n%s\n\n\n", metadata);
 
    ASSERT (metadata);
 
