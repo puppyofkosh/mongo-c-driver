@@ -1913,7 +1913,6 @@ mongoc_client_metadata_set_application (bson_t               *metadata,
                                         const char           *application_name)
 {
    bson_iter_t iter;
-   bson_iter_t meta_iter;
    bson_t application;
    bson_t metadata_copy;
    const char* app_field = METADATA_APPLICATION_FIELD;
@@ -1922,12 +1921,11 @@ mongoc_client_metadata_set_application (bson_t               *metadata,
    BSON_ASSERT (metadata);
    BSON_ASSERT (application_name);
 
-   BSON_ASSERT(bson_iter_init_find (&iter, metadata, METADATA_FIELD) &&
-               BSON_ITER_HOLDS_DOCUMENT (&iter) &&
-               bson_iter_recurse (&iter, &meta_iter));
+   bson_iter_init (&iter, metadata);
 
    /* Check if we've already added application info to the metadata */
-   if (bson_iter_init_find (&meta_iter, metadata, app_field)) {
+   if (bson_iter_init_find (&iter, metadata, app_field)) {
+      MONGOC_ERROR ("Can only set application once");
       return false;
    }
 
@@ -2029,7 +2027,6 @@ void mongoc_client_metadata_init (bson_t* metadata)
 
    /* see mongoc-config.h.in for all this" */
    BCON_APPEND (metadata,
-                METADATA_FIELD, "{",
                 "driver", "{",
                 "name", "mongoc",
                 "version", MONGOC_VERSION_S,
@@ -2044,7 +2041,5 @@ void mongoc_client_metadata_init (bson_t* metadata)
                 "platform",
                 "CC=" MONGOC_CC " "
                 "CLFAGS=" MONGOC_CFLAGS " "
-                "./configure " MONGOC_CONFIGURE_ARGS,
-
-                "}");
+                "./configure " MONGOC_CONFIGURE_ARGS);
 }

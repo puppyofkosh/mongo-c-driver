@@ -210,6 +210,28 @@ test_mongoc_client_pool_ssl_disabled (void)
 }
 #endif
 
+static void
+test_mongoc_client_pool_set_metadata ()
+{
+   mongoc_client_pool_t *pool;
+   mongoc_uri_t *uri;
+   char* str = NULL;
+   bson_t metadata;
+
+   uri = mongoc_uri_new("mongodb://127.0.0.1?maxpoolsize=1&minpoolsize=1");
+   pool = mongoc_client_pool_new(uri);
+
+   ASSERT (mongoc_client_pool_set_application (pool, "some application"));
+
+   mongoc_client_pool_get_metadata (pool, &metadata);
+   str = bson_as_json (&metadata, NULL);
+   fprintf (stderr, "\n\n\n%s\n\n\n", str);
+   bson_free (str);
+
+   mongoc_uri_destroy(uri);
+   mongoc_client_pool_destroy(pool);
+}
+
 void
 test_client_pool_install (TestSuite *suite)
 {
@@ -219,6 +241,7 @@ test_client_pool_install (TestSuite *suite)
    TestSuite_Add (suite, "/ClientPool/min_size_dispose", test_mongoc_client_pool_min_size_dispose);
    TestSuite_Add (suite, "/ClientPool/set_max_size", test_mongoc_client_pool_set_max_size);
    TestSuite_Add (suite, "/ClientPool/set_min_size", test_mongoc_client_pool_set_min_size);
+   TestSuite_Add (suite, "/ClientPool/metadata", test_mongoc_client_pool_set_metadata);
 
 #ifndef MONGOC_ENABLE_SSL
    TestSuite_Add (suite, "/ClientPool/ssl_disabled", test_mongoc_client_pool_ssl_disabled);

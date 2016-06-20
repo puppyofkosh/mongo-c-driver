@@ -1702,14 +1702,15 @@ test_mongoc_client_set_metadata ()
    client = test_framework_client_new ();
    ASSERT (client);
 
-   mongoc_client_set_application (client, "hallo thar");
+   ASSERT (mongoc_client_set_application (client, "hallo thar"));
 
    metadata = bson_as_json (&client->metadata, NULL);
    fprintf (stderr, "\n\n\n%s\n\n\n", metadata);
-
    ASSERT (metadata);
-
    bson_free (metadata);
+
+   /* TODO: Check that setting too long a name causes failure */
+
    mongoc_client_destroy (client);
 }
 
