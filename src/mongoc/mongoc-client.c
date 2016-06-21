@@ -2054,15 +2054,13 @@ bool mongoc_client_metadata_set_data (bson_t                    *old_metadata,
     */
    while (bson_iter_next (&iter)) {
       key = bson_iter_key (&iter);
-      printf ("Found a field named: %s\n", bson_iter_key (&iter));
+
       /* change platform: "whatever" to "whatever / platform-arg" */
       if (platform && strcmp (key, METADATA_PLATFORM_FIELD) == 0) {
          BSON_ASSERT (BSON_ITER_HOLDS_UTF8 (&iter));
          value = bson_iter_utf8 (&iter, NULL);
+
          new_val = bson_strdup_printf (fmt_string, value, platform);
-         /* TODO: we dont have to recompute keylen, jsut get it when
-            we do iter_key
-          */
          bson_append_utf8 (buffer, METADATA_PLATFORM_FIELD, -1,
                            new_val, -1);
          bson_free ((char*)new_val);
@@ -2086,8 +2084,6 @@ bool mongoc_client_metadata_set_data (bson_t                    *old_metadata,
       bson_append_iter (buffer, key, -1, &iter);
    }
 
-   /* TODO: Check if new metadata is too big, if so return false and free it */
-
    return true;
 }
 
@@ -2097,14 +2093,14 @@ bool mongoc_client_set_metadata (mongoc_client_t              *client,
                                  const char                   *platform)
 {
    bson_t new_metadata;
-   mongoc_client_metadata_set_data (&client->metadata,
-                                    &new_metadata,
-                                    driver_name,
-                                    version,
-                                    platform);
-   if (new_metadata.len > METADATA_MAX_SIZE) {
+   bool ret = mongoc_client_metadata_set_data (&client->metadata,
+                                               &new_metadata,
+                                               driver_name,
+                                               version,
+                                               platform);
+
+   if (!ret || new_metadata.len > METADATA_MAX_SIZE) {
       /* cleanup, don't change client->metadata */
-      fprintf (stderr, "New size is %d\n", new_metadata.len);
       bson_destroy (&new_metadata);
       return false;
    } else {
