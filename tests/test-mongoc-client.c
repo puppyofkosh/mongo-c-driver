@@ -1782,16 +1782,13 @@ test_client_sends_metadata () {
                                           NULL,
                                           &error);
 
-   /* request = mock_server_receives_command ( */
-   /*    server, "admin", MONGOC_QUERY_SLAVE_OK, "{'isMaster': 1}"); */
    request = mock_server_receives_ismaster (server);
 
    /* Make sure the request has a "meta" field: */
    request_doc = request_get_doc (request, 0);
+   ASSERT (request_doc);
    ASSERT (bson_has_field (request_doc, "isMaster"));
-
-   /* TODO: change this! (It shouldn't be commented) */
-   /* ASSERT (bson_has_field (request_doc, METADATA_FIELD));*/
+   ASSERT (bson_has_field (request_doc, METADATA_FIELD));
 
    /* Respond and make sure the ping command succeeds */
    reply = bson_strdup_printf (
@@ -1807,6 +1804,13 @@ test_client_sends_metadata () {
                                            "{'ping': 1}");
    mock_server_replies_ok_and_destroys (request);
    assert (future_get_bool (future));
+
+
+   description = mongoc_client_select_server (client, false, NULL, &error);
+
+   /* TODO: How to test subsequent isMaster commands DONT have the extra info */
+
+   mongoc_server_description_destroy (description);
 
    bson_free (reply);
    future_destroy (future);

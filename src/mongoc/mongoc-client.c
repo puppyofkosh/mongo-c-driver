@@ -743,6 +743,8 @@ _mongoc_client_new_from_uri (const mongoc_uri_t *uri, mongoc_topology_t *topolog
    client->topology = topology;
 
    mongoc_client_metadata_init (&client->metadata);
+   mongoc_topology_scanner_set_client_metadata(client->topology->scanner,
+                                               &client->metadata);
 
    client->error_api_version = MONGOC_ERROR_API_VERSION_LEGACY;
    client->error_api_set = false;
@@ -1904,8 +1906,17 @@ bool
 mongoc_client_set_application (mongoc_client_t              *client,
                                const char                   *application_name)
 {
-   return mongoc_client_metadata_set_application (&client->metadata,
-                                                  application_name);
+   bool res;
+   
+   res = mongoc_client_metadata_set_application (&client->metadata,
+                                                 application_name);
+
+   if (res) {
+      /* FIXME: probably don't do this */
+      mongoc_topology_scanner_set_client_metadata (client->topology->scanner,
+                                                   &client->metadata);
+   }
+   return res;
 }
 
 bool
@@ -2106,6 +2117,9 @@ bool mongoc_client_set_metadata (mongoc_client_t              *client,
    } else {
       bson_destroy (&client->metadata);
       bson_steal (&client->metadata, &new_metadata);
+
+      mongoc_topology_scanner_set_client_metadata (client->topology->scanner,
+                                                   &client->metadata);
       return true;
    }
 }

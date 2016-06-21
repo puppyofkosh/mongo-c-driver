@@ -17,6 +17,7 @@
 #include <bson.h>
 #include <bson-string.h>
 
+#include "mongoc-client-private.h"
 #include "mongoc-error.h"
 #include "mongoc-trace.h"
 #include "mongoc-topology-scanner-private.h"
@@ -49,9 +50,9 @@ mongoc_topology_scanner_new (const mongoc_uri_t          *uri,
    mongoc_topology_scanner_t *ts = (mongoc_topology_scanner_t *)bson_malloc0 (sizeof (*ts));
 
    ts->async = mongoc_async_new ();
+
    bson_init (&ts->ismaster_cmd);
-   BSON_APPEND_INT32 (&ts->ismaster_cmd, "isMaster", 1);
-   /* TODO: Include metadata document here!11*/
+   mongoc_topology_scanner_set_client_metadata (ts, NULL);
 
    ts->cb = cb;
    ts->cb_data = data;
@@ -677,3 +678,23 @@ mongoc_topology_scanner_reset (mongoc_topology_scanner_t *ts)
    }
 }
 
+/*
+ * update the ismaster_cmd command to include given metadata document
+ * hackish version
+ * TODO: this is horrible
+ */
+void
+mongoc_topology_scanner_set_client_metadata (mongoc_topology_scanner_t *ts,
+                                             bson_t *metadata_doc) {
+   BSON_ASSERT (ts);
+
+   /* TODO: dont reinitialize the whole document again... */
+   /* reinitialize the whole document (again, hackish, I know) */
+   bson_reinit (&ts->ismaster_cmd);
+   BSON_APPEND_INT32 (&ts->ismaster_cmd, "isMaster", 1);
+
+   if (metadata_doc) {
+      bson_append_document (&ts->ismaster_cmd, METADATA_FIELD, -1,
+                            metadata_doc);
+   }
+}
