@@ -1931,10 +1931,6 @@ mongoc_client_metadata_set_application (bson_t               *metadata,
 
    application_name_len = strlen (application_name);
 
-   if (application_name_len > METADATA_APPLICATION_NAME_MAX_LENGTH) {
-      return false;
-   }
-
    /* Another option to this check is to just rely on the bson spec and
       do some computation like name_len + 1 + key_len +
       metadata->len + 1 + 1 + 4 > METADATA_MAX_SIZE
@@ -1976,12 +1972,146 @@ mongoc_client_metadata_set_application (bson_t               *metadata,
    return true;
 }
 
+/*
+  Turn an iter pointing to the contents of(src_driver):
+  {
+     name: "mongoc",
+     version: "1.4.0"
+  },
+
+  Into (dst_driver):
+  {
+     name: "mongoc / [name]",
+     version: "1.4.0 / [platform]"
+  },
+ */
+static void update_driver_doc (bson_iter_t* src_iter,
+                               bson_t* dst_driver,
+                               const char* name,
+                               const char* version,
+                               const char* fmt_string)
+{
+   const char* key;
+   const char* value;
+   const char* new_val;
+   const char* suffix;
+
+   while (bson_iter_next (src_iter)) {
+      key = bson_iter_key (src_iter);
+      BSON_ASSERT (BSON_ITER_HOLDS_UTF8 (src_iter));
+      value = bson_iter_utf8 (src_iter, NULL);
+
+      suffix = NULL;
+      if (strcmp (key, METADATA_DRIVER_NAME_FIELD) == 0) {
+         suffix = name;
+      } else if (strcmp (key, METADATA_DRIVER_VERSION_FIELD) == 0) {
+         suffix = version;
+      } else {
+         /* Maybe bad style? */
+         BSON_ASSERT (0 && "Schema of driver field is wrong");
+      }
+
+      new_val = value;
+      if (suffix) {
+         new_val = bson_strdup_printf (fmt_string, value, suffix);
+      }
+
+      bson_append_utf8 (dst_driver, key, -1, new_val, -1);
+
+      if (suffix) {
+         bson_free ((char*)new_val);
+      }
+   }
+}
+
+bool mongoc_client_metadata_set_data (bson_t                    *old_metadata,
+                                      bson_t                    *buffer,
+                                      const char                *driver_name,
+                                      const char                *version,
+                                      const char                *platform)
+{
+   bson_iter_t iter;
+   bson_iter_t sub_iter;
+   bson_t child;
+   const char* key;
+   const char* sub_key;
+   const char* value;
+   const char* new_val;
+   const char* const fmt_string = "%s / %s";
+
+   BSON_ASSERT (old_metadata);
+   BSON_ASSERT (buffer);
+
+   bson_init (buffer);
+
+   if (!bson_iter_init (&iter, old_metadata)) {
+      MONGOC_ERROR ("Couldn't make iter for old_metadata");
+      return false;
+   }
+
+   /* Build a copy of the current metadata, changing the appropriate fields
+      as we go. Then overwrite the current metadata with this one
+    */
+   while (bson_iter_next (&iter)) {
+      key = bson_iter_key (&iter);
+      printf ("Found a field named: %s\n", bson_iter_key (&iter));
+      /* change platform: "whatever" to "whatever / platform-arg" */
+      if (platform && strcmp (key, METADATA_PLATFORM_FIELD) == 0) {
+         BSON_ASSERT (BSON_ITER_HOLDS_UTF8 (&iter));
+         value = bson_iter_utf8 (&iter, NULL);
+         new_val = bson_strdup_printf (fmt_string, value, platform);
+         /* TODO: we dont have to recompute keylen, jsut get it when
+            we do iter_key
+          */
+         bson_append_utf8 (buffer, METADATA_PLATFORM_FIELD, -1,
+                           new_val, -1);
+         bson_free ((char*)new_val);
+         continue;
+      }
+
+      if ((version || driver_name) &&
+          strcmp (key, METADATA_DRIVER_FIELD) == 0) {
+         /* Insert an updated copy of the document with the driver info */
+         BSON_ASSERT (BSON_ITER_HOLDS_DOCUMENT (&iter));
+         bson_iter_recurse (&iter, &sub_iter);
+
+         bson_append_document_begin (buffer, METADATA_DRIVER_FIELD, -1,
+                                     &child);
+         update_driver_doc (&sub_iter, &child, driver_name, version, fmt_string);
+         bson_append_document_end (buffer, &child);
+         continue;
+      }
+
+      /* Otherwise just copy whatever's already in src */
+      bson_append_iter (buffer, key, -1, &iter);
+   }
+
+   /* TODO: Check if new metadata is too big, if so return false and free it */
+
+   return true;
+}
+
 bool mongoc_client_set_metadata (mongoc_client_t              *client,
                                  const char                   *driver_name,
                                  const char                   *version,
                                  const char                   *platform)
 {
-   return false;
+   bson_t new_metadata;
+   mongoc_client_metadata_set_data (&client->metadata,
+                                    &new_metadata,
+                                    driver_name,
+                                    version,
+                                    platform);
+   if (new_metadata.len > METADATA_MAX_SIZE) {
+      /* cleanup, don't change client->metadata */
+      fprintf (stderr, "New size is %d\n", new_metadata.len);
+      bson_destroy (&new_metadata);
+      return false;
+   } else {
+      bson_destroy (&client->metadata);
+      bson_steal (&client->metadata, &new_metadata);
+      return true;
+   }
 }
 
 #ifndef _WIN32
@@ -2011,6 +2141,8 @@ static bool get_system_info (const char** name, const char** architecture,
 
    return true;
 }
+#else
+/* TODO =/ */
 #endif
 
 
@@ -2025,9 +2157,8 @@ void mongoc_client_metadata_init (bson_t* metadata)
 
    get_system_info (&name, &architecture, &version);
 
-   /* see mongoc-config.h.in for all this" */
    BCON_APPEND (metadata,
-                "driver", "{",
+                METADATA_DRIVER_FIELD, "{",
                 "name", "mongoc",
                 "version", MONGOC_VERSION_S,
                 "}",
