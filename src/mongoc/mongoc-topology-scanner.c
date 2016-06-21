@@ -51,6 +51,7 @@ mongoc_topology_scanner_new (const mongoc_uri_t          *uri,
    ts->async = mongoc_async_new ();
    bson_init (&ts->ismaster_cmd);
    BSON_APPEND_INT32 (&ts->ismaster_cmd, "isMaster", 1);
+   /* TODO: Include metadata document here!11*/
 
    ts->cb = cb;
    ts->cb_data = data;

@@ -1713,14 +1713,13 @@ test_mongoc_client_metadata ()
    /* Check that setting too long a name causes failure */
    ASSERT (!mongoc_client_set_application (client, big_string));
 
-   /* TODO: Check that setting a name which appears to be small enough to fit
+   /* Check that setting a name which appears to be small enough to fit
       but actually won't doesn't cause a problem */
    space_left = METADATA_MAX_SIZE - client->metadata.len;
    ASSERT (space_left > 0);
 
    /* Make a string exactly this size and try to insert it.
-      Should still fail since there is overhead associated with the string
-    */
+      Should still fail since there is overhead associated with the string */
    big_string[space_left - 1] = '\0';
    ASSERT (strlen (big_string) + 1 == space_left);
    ASSERT (!mongoc_client_set_application (client, big_string));
@@ -1728,8 +1727,7 @@ test_mongoc_client_metadata ()
    /* Success case */
    ASSERT (mongoc_client_set_application (client, short_string));
 
-
-   /* Try set_metadata function */
+   /* --set_metadata function-- */
 
    /* We can only call this function once per client */
    client2 = test_framework_client_new ();
@@ -1750,13 +1748,71 @@ test_mongoc_client_metadata ()
                                        "Driver version 123",
                                        "platform abc"));
 
+   /* TODO: Remove this */
    metadata = bson_as_json (&client->metadata, NULL);
    fprintf (stderr, "\n\n\n%s\n\n\n", metadata);
    ASSERT (metadata);
    bson_free (metadata);
 
-   /* TODO: Check that setting too long a name causes failure */
    mongoc_client_destroy (client);
+}
+
+static void
+test_client_sends_metadata () {
+   mock_server_t *server;
+   mongoc_uri_t *uri;
+   mongoc_client_t *client;
+   mongoc_read_prefs_t *prefs;
+   bson_error_t error;
+   future_t *future;
+   request_t *request;
+   char *reply;
+   const bson_t* request_doc;
+
+   server = mock_server_new ();
+   mock_server_run (server);
+   uri = mongoc_uri_copy (mock_server_get_uri (server));
+   mongoc_uri_set_option_as_utf8 (uri, "replicaSet", "rs");
+   client = mongoc_client_new_from_uri (uri);
+
+   future = future_client_command_simple (client,
+                                          "admin",
+                                          tmp_bson ("{'ping': 1}"),
+                                          NULL,
+                                          NULL,
+                                          &error);
+
+   /* request = mock_server_receives_command ( */
+   /*    server, "admin", MONGOC_QUERY_SLAVE_OK, "{'isMaster': 1}"); */
+   request = mock_server_receives_ismaster (server);
+
+   /* Make sure the request has a "meta" field: */
+   request_doc = request_get_doc (request, 0);
+   ASSERT (bson_has_field (request_doc, "isMaster"));
+
+   /* TODO: change this! (It shouldn't be commented) */
+   /* ASSERT (bson_has_field (request_doc, METADATA_FIELD));*/
+
+   /* Respond and make sure the ping command succeeds */
+   reply = bson_strdup_printf (
+      "{'ok': 1,"
+      " 'setName': 'rs',"
+      " 'ismaster': true,"
+      " 'hosts': ['%s']}",
+      mock_server_get_host_and_port (server));
+   mock_server_replies_simple (request, reply);
+   request_destroy (request);
+
+   request = mock_server_receives_command (server, "admin", MONGOC_QUERY_NONE,
+                                           "{'ping': 1}");
+   mock_server_replies_ok_and_destroys (request);
+   assert (future_get_bool (future));
+
+   bson_free (reply);
+   future_destroy (future);
+   mongoc_client_destroy (client);
+   mongoc_uri_destroy (uri);
+   mock_server_destroy (server);
 }
 
 
@@ -1806,7 +1862,8 @@ test_client_install (TestSuite *suite)
    TestSuite_Add (suite, "/Client/database_names", test_get_database_names);
    TestSuite_AddFull (suite, "/Client/connect/uds", test_mongoc_client_unix_domain_socket, NULL, NULL, test_framework_skip_if_no_uds);
    TestSuite_Add (suite, "/Client/mismatched_me", test_mongoc_client_mismatched_me);
-   TestSuite_Add (suite, "/Client/metadata", test_mongoc_client_metadata);
+   TestSuite_Add (suite, "/Client/set_metadata", test_mongoc_client_metadata);
+   TestSuite_Add (suite, "/Client/sends_metadata", test_client_sends_metadata);
 
 #ifdef TODO_CDRIVER_689
    TestSuite_Add (suite, "/Client/wire_version", test_wire_version);
