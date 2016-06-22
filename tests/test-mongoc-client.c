@@ -1775,7 +1775,6 @@ test_client_sends_metadata () {
    mock_server_t *server;
    mongoc_uri_t *uri;
    mongoc_client_t *client;
-   mongoc_read_prefs_t *prefs;
    bson_error_t error;
    future_t *future;
    request_t *request;
