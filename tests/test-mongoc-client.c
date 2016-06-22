@@ -1806,11 +1806,7 @@ test_client_sends_metadata () {
    assert (future_get_bool (future));
 
 
-   description = mongoc_client_select_server (client, false, NULL, &error);
-
    /* TODO: How to test subsequent isMaster commands DONT have the extra info */
-
-   mongoc_server_description_destroy (description);
 
    bson_free (reply);
    future_destroy (future);
