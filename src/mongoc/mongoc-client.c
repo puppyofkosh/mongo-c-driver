@@ -23,7 +23,6 @@
 #else
 # include <windows.h>
 # include <stdio.h>
-# include <VersionHelpers.h>
 # pragma comment(lib, "version.lib")
 #endif
 
@@ -2170,56 +2169,61 @@ static bool get_system_info (const char** name, const char** architecture,
 {
    const char* kernel32 = "\\kernel32.dll";
    char *path = NULL;
-   void *ver = NULL, *block;
+   void *ver = NULL;
+   void *block;
+   bool r;
    UINT n;
-   BOOL r;
    DWORD versz, blocksz;
    VS_FIXEDFILEINFO *vinfo;
 
-   fprintf (stderr, "In gsi\n\n");
-   path = malloc(sizeof(*path) * MAX_PATH);
-   if (!path)
-      abort();
 
-   fprintf (stderr, "2\n\n");
+   /* Following instructions from
+      https://msdn.microsoft.com/en-us/library/windows/
+      desktop/ms724429(v=vs.85).aspx
+
+      and following general idea of python's sys.getwindowsversion()
+    */
+   /* MAX_PATH is provided by windows.h */
+   path = bson_malloc(MAX_PATH);
    n = GetSystemDirectory(path, MAX_PATH);
-   fprintf (stderr, "2.5: Path is %s\n\n\n", path);
    if (n >= MAX_PATH || n == 0 ||
-       n > MAX_PATH - strlen(kernel32) / sizeof(*kernel32))
-      abort();
-   fprintf (stderr, "n is %d\n", n);
-   fprintf (stderr, "path is %s\n", path);
-   fprintf (stderr, "kernel is %s\n", kernel32);
-   memcpy(path + n, kernel32, strlen(kernel32) + 1);
+       n > MAX_PATH - strlen (kernel32)) {
+      goto done;
+   }
 
-   fprintf (stderr, "3: Path is %s\n\n\n", path);
+   r = strcat_s (path, MAX_PATH, kernel32);
+   if (r) {
+      goto done;
+   }
    versz = GetFileVersionInfoSize(path, NULL);
 
-   fprintf (stderr, "Last error %d\n", GetLastError());
-   if (versz == 0)
-      abort();
-   fprintf (stderr, "4\n\n");   
-   ver = malloc(versz);
-   if (!ver)
-      abort();
-   fprintf (stderr, "2\n\n");
-   r = GetFileVersionInfo(path, 0, versz, ver);
-   if (!r)
-      abort();
-   fprintf (stderr, "2\n\n");
-   r = VerQueryValue(ver, L"\\", &block, &blocksz);
-   if (!r || blocksz < sizeof(VS_FIXEDFILEINFO))
-      abort();
+   if (versz == 0) {
+      goto done;
+   }
 
-   fprintf (stderr, "2\n\n");
+   ver = bson_malloc(versz);
+   r = GetFileVersionInfo(path, 0, versz, ver);
+   if (!r) {
+      goto done;
+   }
+
+   r = VerQueryValue(ver, "\\", &block, &blocksz);
+   if (!r) {
+      goto done;
+   }
    vinfo = (VS_FIXEDFILEINFO *) block;
-   fprintf(stderr, 
-      "Windows version: %d.%d.%d",
-      (int) HIWORD(vinfo->dwProductVersionMS),
-      (int) LOWORD(vinfo->dwProductVersionMS),
-      (int) HIWORD(vinfo->dwProductVersionLS));
-   free(path);
-   free(ver);
+
+   if (version) {
+      *version = bson_strdup_printf ("Windows %d.%d.%d",
+                                     (int) HIWORD(vinfo->dwProductVersionMS),
+                                     (int) LOWORD(vinfo->dwProductVersionMS),
+                                     (int) HIWORD(vinfo->dwProductVersionLS));
+      fprintf (stderr, "version is: %s\n", *version);
+   }
+
+done:
+   bson_free(path);
+   bson_free(ver);
 
    return true;
 }
