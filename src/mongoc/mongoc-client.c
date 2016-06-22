@@ -2112,6 +2112,12 @@ bool mongoc_client_set_metadata (mongoc_client_t              *client,
 
    if (!ret || new_metadata.len > METADATA_MAX_SIZE) {
       /* cleanup, don't change client->metadata */
+
+      /* TODO: Remove */
+      fprintf (stderr, "Total size would be%d-> %d\n", client->metadata.len,
+               new_metadata.len);
+      
+
       bson_destroy (&new_metadata);
       return false;
    } else {

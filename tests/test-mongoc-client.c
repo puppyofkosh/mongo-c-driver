@@ -1703,6 +1703,7 @@ test_mongoc_client_metadata ()
    mongoc_client_t *client2;
    char *metadata = NULL;
    int space_left;
+   int before_size;
 
    memset (big_string, 'a', BUFFER_SIZE -1);
    big_string[BUFFER_SIZE - 1] = '\0';
@@ -1710,9 +1711,12 @@ test_mongoc_client_metadata ()
    client = test_framework_client_new ();
    ASSERT (client);
 
+   before_size = client->metadata.len;
    /* Check that setting too long a name causes failure */
    ASSERT (!mongoc_client_set_application (client, big_string));
-
+   /* Nothing changed */
+   ASSERT (client->metadata.len == before_size);
+   
    /* Check that setting a name which appears to be small enough to fit
       but actually won't doesn't cause a problem */
    space_left = METADATA_MAX_SIZE - client->metadata.len;
@@ -1722,10 +1726,19 @@ test_mongoc_client_metadata ()
       Should still fail since there is overhead associated with the string */
    big_string[space_left - 1] = '\0';
    ASSERT (strlen (big_string) + 1 == space_left);
+   before_size = client->metadata.len;
    ASSERT (!mongoc_client_set_application (client, big_string));
+   ASSERT (before_size == client->metadata.len);
 
    /* Success case */
    ASSERT (mongoc_client_set_application (client, short_string));
+
+   /* TODO: remove this*/
+   metadata = bson_as_json (&client->metadata, NULL);
+   fprintf (stderr, "\n\nMETADATA:\n%s\nLEN: %d\n\n", metadata,
+            client->metadata.len);
+   ASSERT (metadata);
+   bson_free (metadata);
 
    /* --set_metadata function-- */
 
