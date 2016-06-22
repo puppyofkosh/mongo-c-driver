@@ -22,7 +22,9 @@
 # include <sys/utsname.h>
 #else
 # include <windows.h>
+# include <stdio.h>
 # include <VersionHelpers.h>
+# pragma comment(lib, "version.lib")
 #endif
 
 
@@ -2166,44 +2168,58 @@ static bool get_system_info (const char** name, const char** architecture,
 static bool get_system_info (const char** name, const char** architecture,
                              const char** version)
 {
-   OSVERSIONINFO osvi;
+   const char* kernel32 = "\\kernel32.dll";
+   char *path = NULL;
+   void *ver = NULL, *block;
+   UINT n;
+   BOOL r;
+   DWORD versz, blocksz;
+   VS_FIXEDFILEINFO *vinfo;
 
-   /* Must be set before calling GetVersionEx */
-   osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
-   GetVersionEx (&osvi);
+   fprintf (stderr, "In gsi\n\n");
+   path = malloc(sizeof(*path) * MAX_PATH);
+   if (!path)
+      abort();
 
+   fprintf (stderr, "2\n\n");
+   n = GetSystemDirectory(path, MAX_PATH);
+   fprintf (stderr, "2.5: Path is %s\n\n\n", path);
+   if (n >= MAX_PATH || n == 0 ||
+       n > MAX_PATH - strlen(kernel32) / sizeof(*kernel32))
+      abort();
+   fprintf (stderr, "n is %d\n", n);
+   fprintf (stderr, "path is %s\n", path);
+   fprintf (stderr, "kernel is %s\n", kernel32);
+   memcpy(path + n, kernel32, strlen(kernel32) + 1);
 
-   if (name) {
-      *name = "name";
-   }
+   fprintf (stderr, "3: Path is %s\n\n\n", path);
+   versz = GetFileVersionInfoSize(path, NULL);
 
-   if (architecture) {
-      *architecture = "arch";
-   }
+   fprintf (stderr, "Last error %d\n", GetLastError());
+   if (versz == 0)
+      abort();
+   fprintf (stderr, "4\n\n");   
+   ver = malloc(versz);
+   if (!ver)
+      abort();
+   fprintf (stderr, "2\n\n");
+   r = GetFileVersionInfo(path, 0, versz, ver);
+   if (!r)
+      abort();
+   fprintf (stderr, "2\n\n");
+   r = VerQueryValue(ver, L"\\", &block, &blocksz);
+   if (!r || blocksz < sizeof(VS_FIXEDFILEINFO))
+      abort();
 
-   /* Copied from msdn docs =/*/
-   /* if (IsWindows10OrGreater()) { */
-   /*    *version = ">= Windows 10"; */
-   /* } else if (IsWindows8Point1OrGreater()) { */
-   /*    *version = "Windows 8.1"; */
-   /* } else if (IsWindows8OrGreater()) { */
-   /*    *version = "Windows 8\n"; */
-   /* } else if (IsWindows7SP1OrGreater()) { */
-   /*    *version = "Windows 7 SP1"; */
-   /* } if (IsWindows7OrGreater()) { */
-   /*    *version = "Windows 7"; */
-   /* } if (IsWindowsVistaOrGreater()) { */
-   /*    *version = "Windows Vista"; */
-   /* } if (IsWindowsXPOrGreater()) { */
-   /*    *version = "Windows XP"; */
-   /* } */
-
-
-   if (version) {
-      /* TODO: Free these strings somewhere (probably make the other version strdup them) */
-      *version = bson_strdup_printf ("windows %d.%d", osvi.dwMajorVersion,
-                                     osvi.dwMinorVersion);
-   }
+   fprintf (stderr, "2\n\n");
+   vinfo = (VS_FIXEDFILEINFO *) block;
+   fprintf(stderr, 
+      "Windows version: %d.%d.%d",
+      (int) HIWORD(vinfo->dwProductVersionMS),
+      (int) LOWORD(vinfo->dwProductVersionMS),
+      (int) HIWORD(vinfo->dwProductVersionLS));
+   free(path);
+   free(ver);
 
    return true;
 }
