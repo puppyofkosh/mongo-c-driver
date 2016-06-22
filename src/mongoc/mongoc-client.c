@@ -20,7 +20,11 @@
 # include <netdb.h>
 # include <netinet/tcp.h>
 # include <sys/utsname.h>
+#else
+# include <windows.h>
+# include <VersionHelpers.h>
 #endif
+
 
 #include "mongoc-cursor-array-private.h"
 #include "mongoc-client-private.h"
@@ -2144,6 +2148,7 @@ static bool get_system_info (const char** name, const char** architecture,
    }
 
    if (name) {
+      /* TODO: copy these strings */
       *name = sysinfo.sysname;
    }
 
@@ -2158,7 +2163,50 @@ static bool get_system_info (const char** name, const char** architecture,
    return true;
 }
 #else
-/* TODO =/ */
+static bool get_system_info (const char** name, const char** architecture,
+                             const char** version)
+{
+   OSVERSIONINFO osvi;
+
+   /* Must be set before calling GetVersionEx */
+   osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
+   GetVersionEx (&osvi);
+
+
+   if (name) {
+      *name = "name";
+   }
+
+   if (architecture) {
+      *architecture = "arch";
+   }
+
+   /* Copied from msdn docs =/*/
+   /* if (IsWindows10OrGreater()) { */
+   /*    *version = ">= Windows 10"; */
+   /* } else if (IsWindows8Point1OrGreater()) { */
+   /*    *version = "Windows 8.1"; */
+   /* } else if (IsWindows8OrGreater()) { */
+   /*    *version = "Windows 8\n"; */
+   /* } else if (IsWindows7SP1OrGreater()) { */
+   /*    *version = "Windows 7 SP1"; */
+   /* } if (IsWindows7OrGreater()) { */
+   /*    *version = "Windows 7"; */
+   /* } if (IsWindowsVistaOrGreater()) { */
+   /*    *version = "Windows Vista"; */
+   /* } if (IsWindowsXPOrGreater()) { */
+   /*    *version = "Windows XP"; */
+   /* } */
+
+
+   if (version) {
+      /* TODO: Free these strings somewhere (probably make the other version strdup them) */
+      *version = bson_strdup_printf ("windows %d.%d", osvi.dwMajorVersion,
+                                     osvi.dwMinorVersion);
+   }
+
+   return true;
+}
 #endif
 
 
