@@ -1932,7 +1932,7 @@ mongoc_client_metadata_set_application (bson_t               *metadata,
    bson_t application;
    bson_t metadata_copy;
    const char* app_field = METADATA_APPLICATION_FIELD;
-   int application_name_len;
+   uint32_t application_name_len;
 
    BSON_ASSERT (metadata);
    BSON_ASSERT (application_name);
@@ -1945,7 +1945,7 @@ mongoc_client_metadata_set_application (bson_t               *metadata,
       return false;
    }
 
-   application_name_len = strlen (application_name);
+   application_name_len = (uint32_t)strlen (application_name);
 
    /* Another option to this check is to just rely on the bson spec and
       do some computation like name_len + 1 + key_len +
@@ -1969,7 +1969,7 @@ mongoc_client_metadata_set_application (bson_t               *metadata,
    bson_append_document_begin(metadata, app_field, -1, &application);
    bson_append_utf8 (&application,
                      METADATA_APPLICATION_NAME_FIELD,
-                     strlen (METADATA_APPLICATION_NAME_FIELD),
+                     -1,
                      application_name, application_name_len);
    bson_append_document_end(metadata, &application);
 
@@ -2050,7 +2050,6 @@ bool mongoc_client_metadata_set_data (bson_t                    *old_metadata,
    bson_iter_t sub_iter;
    bson_t child;
    const char* key;
-   const char* sub_key;
    const char* value;
    const char* new_val;
    const char* const fmt_string = "%s / %s";
@@ -2214,7 +2213,7 @@ static bool get_system_info (const char** name, const char** architecture,
    vinfo = (VS_FIXEDFILEINFO *) block;
 
    if (version) {
-      *version = bson_strdup_printf ("Windows %d.%d.%d",
+      *version = bson_strdup_printf ("Windows: %d.%d.%d",
                                      (int) HIWORD(vinfo->dwProductVersionMS),
                                      (int) LOWORD(vinfo->dwProductVersionMS),
                                      (int) HIWORD(vinfo->dwProductVersionLS));
