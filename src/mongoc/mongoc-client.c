@@ -2008,8 +2008,7 @@ mongoc_client_metadata_set_application (bson_t               *metadata,
 static void update_driver_doc (bson_iter_t* src_iter,
                                bson_t* dst_driver,
                                const char* name,
-                               const char* version,
-                               const char* fmt_string)
+                               const char* version)
 {
    const char* key;
    const char* value;
@@ -2033,7 +2032,7 @@ static void update_driver_doc (bson_iter_t* src_iter,
 
       new_val = value;
       if (suffix) {
-         new_val = bson_strdup_printf (fmt_string, value, suffix);
+         new_val = bson_strdup_printf ("%s / %s", value, suffix);
       }
 
       bson_append_utf8 (dst_driver, key, -1, new_val, -1);
@@ -2056,7 +2055,6 @@ bool mongoc_client_metadata_set_data (bson_t                    *old_metadata,
    const char* key;
    const char* value;
    const char* new_val;
-   const char* const fmt_string = "%s / %s";
 
    BSON_ASSERT (old_metadata);
    BSON_ASSERT (buffer);
@@ -2079,7 +2077,7 @@ bool mongoc_client_metadata_set_data (bson_t                    *old_metadata,
          BSON_ASSERT (BSON_ITER_HOLDS_UTF8 (&iter));
          value = bson_iter_utf8 (&iter, NULL);
 
-         new_val = bson_strdup_printf (fmt_string, value, platform);
+         new_val = bson_strdup_printf ("%s / %s", value, platform);
          bson_append_utf8 (buffer, METADATA_PLATFORM_FIELD, -1,
                            new_val, -1);
          bson_free ((char*)new_val);
@@ -2094,7 +2092,7 @@ bool mongoc_client_metadata_set_data (bson_t                    *old_metadata,
 
          bson_append_document_begin (buffer, METADATA_DRIVER_FIELD, -1,
                                      &child);
-         update_driver_doc (&sub_iter, &child, driver_name, version, fmt_string);
+         update_driver_doc (&sub_iter, &child, driver_name, version);
          bson_append_document_end (buffer, &child);
          continue;
       }
@@ -2124,7 +2122,6 @@ bool mongoc_client_set_metadata (mongoc_client_t              *client,
       /* TODO: Remove */
       fprintf (stderr, "Total size would be%d-> %d\n", client->metadata.len,
                new_metadata.len);
-      
 
       bson_destroy (&new_metadata);
       return false;
@@ -2139,7 +2136,7 @@ bool mongoc_client_set_metadata (mongoc_client_t              *client,
 }
 
 #ifndef _WIN32
-static bool get_system_info (const char** name, const char** architecture,
+static void get_system_info (const char** name, const char** architecture,
                              const char** version)
 {
    struct utsname sysinfo;
@@ -2148,23 +2145,22 @@ static bool get_system_info (const char** name, const char** architecture,
    res = uname (&sysinfo);
 
    if (res != 0) {
-      return false;
+      MONGOC_ERROR ("Uname failed with error %d", errno);
+      return;
    }
 
    if (name) {
       /* TODO: copy these strings */
-      *name = sysinfo.sysname;
+      *name = bson_strdup (sysinfo.sysname);
    }
 
    if (architecture) {
-      *architecture = sysinfo.machine;
+      *architecture = bson_strdup (sysinfo.machine);
    }
 
    if (version) {
-      *version = sysinfo.version;
+      *version = bson_strdup (sysinfo.version);
    }
-
-   return true;
 }
 #else
 static char* windows_get_version_string ()
@@ -2178,7 +2174,6 @@ static char* windows_get_version_string ()
    UINT n;
    DWORD versz, blocksz;
    VS_FIXEDFILEINFO *vinfo;
-
 
    /* Following instructions from
       https://msdn.microsoft.com/en-us/library/windows/
@@ -2222,6 +2217,11 @@ static char* windows_get_version_string ()
                                  (int) HIWORD(vinfo->dwProductVersionLS));
 
 done:
+   if (!ver_str) {
+      MONGOC_ERROR ("Getting windows version failed with error %d",
+                    GetLastError());
+   }
+
    bson_free(path);
    bson_free(ver);
 
@@ -2254,14 +2254,13 @@ static char* windows_get_arch_string ()
    return NULL;
 }
 
-static bool get_system_info (const char** name, const char** architecture,
+static void get_system_info (const char** name, const char** architecture,
                              const char** version)
 {
-   bool ret = true;
    const char* result_str;
 
    if (name) {
-      *name = "Windows";
+      *name = bson_strdup ("Windows");
    }
 
    if (version) {
@@ -2269,8 +2268,6 @@ static bool get_system_info (const char** name, const char** architecture,
 
       if (result_str) {
          *version = result_str;
-      } else {
-         ret = false;
       }
    }
 
@@ -2279,21 +2276,17 @@ static bool get_system_info (const char** name, const char** architecture,
 
       if (result_str) {
          *architecture = result_str;
-      } else {
-         ret = false;
       }
    }
-
-   return true;
 }
 #endif
 
 
 void mongoc_client_metadata_init (bson_t* metadata)
 {
-   const char* name = "";
-   const char* architecture = "";
-   const char* version = "";
+   const char* name = NULL;
+   const char* architecture = NULL;
+   const char* version = NULL;
 
    BSON_ASSERT (metadata);
    bson_init (metadata);
@@ -2307,13 +2300,17 @@ void mongoc_client_metadata_init (bson_t* metadata)
                 "}",
 
                 "os", "{",
-                "name", name,
-                "architecture", architecture,
-                "version", version,
+                "name", BCON_UTF8 (name ? name : ""),
+                "architecture", BCON_UTF8 (architecture ? architecture : ""),
+                "version", BCON_UTF8 (version ? version : ""),
                 "}",
 
                 "platform",
                 "CC=" MONGOC_CC " "
                 "CLFAGS=" MONGOC_CFLAGS " "
                 "./configure " MONGOC_CONFIGURE_ARGS);
+
+   bson_free ((char*)name);
+   bson_free ((char*)architecture);
+   bson_free ((char*)version);
 }
