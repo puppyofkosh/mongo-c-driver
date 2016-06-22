@@ -23,7 +23,11 @@
 #else
 # include <windows.h>
 # include <stdio.h>
+
+/* TODO: I feel uncomfortable doing this. */
 # pragma comment(lib, "version.lib")
+# pragma comment(lib, "user32.lib")
+
 #endif
 
 
@@ -2163,13 +2167,13 @@ static bool get_system_info (const char** name, const char** architecture,
    return true;
 }
 #else
-static bool get_system_info (const char** name, const char** architecture,
-                             const char** version)
+static char* windows_get_version_string ()
 {
    const char* kernel32 = "\\kernel32.dll";
    char *path = NULL;
    void *ver = NULL;
    void *block;
+   char* ver_str = NULL;
    bool r;
    UINT n;
    DWORD versz, blocksz;
@@ -2212,17 +2216,75 @@ static bool get_system_info (const char** name, const char** architecture,
    }
    vinfo = (VS_FIXEDFILEINFO *) block;
 
-   if (version) {
-      *version = bson_strdup_printf ("Windows: %d.%d.%d",
-                                     (int) HIWORD(vinfo->dwProductVersionMS),
-                                     (int) LOWORD(vinfo->dwProductVersionMS),
-                                     (int) HIWORD(vinfo->dwProductVersionLS));
-      fprintf (stderr, "version is: %s\n", *version);
-   }
+   ver_str = bson_strdup_printf ("Windows: %d.%d.%d",
+                                 (int) HIWORD(vinfo->dwProductVersionMS),
+                                 (int) LOWORD(vinfo->dwProductVersionMS),
+                                 (int) HIWORD(vinfo->dwProductVersionLS));
 
 done:
    bson_free(path);
    bson_free(ver);
+
+   return ver_str;
+}
+
+static char* windows_get_arch_string ()
+{
+   SYSTEM_INFO sysinfo;
+   DWORD arch;
+
+   /* doesn't return anything */
+   GetSystemInfo(&sysinfo);
+
+   arch = sysinfo.wProcessorArchitecture;
+   if (arch == PROCESSOR_ARCHITECTURE_AMD64) {
+      return bson_strdup ("x86_64");
+   } else if (arch == PROCESSOR_ARCHITECTURE_ARM) {
+      return bson_strdup ("ARM");
+   } else if (arch == PROCESSOR_ARCHITECTURE_IA64) {
+      return bson_strdup ("IA64");
+   } else if (arch == PROCESSOR_ARCHITECTURE_INTEL) {
+      return bson_strdup ("x86");
+   } else if (arch == PROCESSOR_ARCHITECTURE_UNKNOWN) {
+      return bson_strdup ("Unkown");
+   }
+
+   MONGOC_ERROR ("Processor architecture lookup failed");
+
+   return NULL;
+}
+
+static bool get_system_info (const char** name, const char** architecture,
+                             const char** version)
+{
+   bool ret = true;
+   const char* result_str;
+
+   if (version) {
+      result_str = windows_get_version_string ();
+
+      if (result_str) {
+         *version = result_str;
+
+         /*TODO: remove */
+         fprintf (stderr, "version is: %s\n", *version);
+      } else {
+         ret = false;
+      }
+   }
+
+   if (architecture) {
+      result_str = windows_get_arch_string ();
+
+      if (result_str) {
+         *architecture = result_str;
+
+         /*TODO: remove */
+         fprintf (stderr, "arch is %s\n", *architecture);
+      } else {
+         ret = false;
+      }
+   }
 
    return true;
 }
