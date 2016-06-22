@@ -2216,7 +2216,7 @@ static char* windows_get_version_string ()
    }
    vinfo = (VS_FIXEDFILEINFO *) block;
 
-   ver_str = bson_strdup_printf ("Windows: %d.%d.%d",
+   ver_str = bson_strdup_printf ("%d.%d.%d",
                                  (int) HIWORD(vinfo->dwProductVersionMS),
                                  (int) LOWORD(vinfo->dwProductVersionMS),
                                  (int) HIWORD(vinfo->dwProductVersionLS));
@@ -2260,14 +2260,15 @@ static bool get_system_info (const char** name, const char** architecture,
    bool ret = true;
    const char* result_str;
 
+   if (name) {
+      *name = "Windows";
+   }
+
    if (version) {
       result_str = windows_get_version_string ();
 
       if (result_str) {
          *version = result_str;
-
-         /*TODO: remove */
-         fprintf (stderr, "version is: %s\n", *version);
       } else {
          ret = false;
       }
@@ -2278,9 +2279,6 @@ static bool get_system_info (const char** name, const char** architecture,
 
       if (result_str) {
          *architecture = result_str;
-
-         /*TODO: remove */
-         fprintf (stderr, "arch is %s\n", *architecture);
       } else {
          ret = false;
       }
