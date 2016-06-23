@@ -1783,17 +1783,14 @@ test_client_sends_metadata () {
    mongoc_client_t *client;
    future_t *future;
    request_t *request;
-   const char *reply;
+   const char * const server_reply = "{'ok': 1, 'ismaster': true}";
    const bson_t* request_doc;
    bson_error_t error;
    mongoc_server_description_t* sd;
 
-   /* TODO: Remove rs and remove hosts field */
-   
    server = mock_server_new ();
    mock_server_run (server);
    uri = mongoc_uri_copy (mock_server_get_uri (server));
-   mongoc_uri_set_option_as_utf8 (uri, "replicaSet", "rs");
    mongoc_uri_set_option_as_int32 (uri, "heartbeatFrequencyMS", 500);
    client = mongoc_client_new_from_uri (uri);
 
@@ -1805,53 +1802,52 @@ test_client_sends_metadata () {
                                           &error);
    request = mock_server_receives_ismaster (server);
 
-   /* Make sure the request has a "meta" field: */
+   /* Make sure the isMaster request has a "meta" field: */
+   ASSERT (request);
    request_doc = request_get_doc (request, 0);
    ASSERT (request_doc);
    ASSERT (bson_has_field (request_doc, "isMaster"));
    ASSERT (bson_has_field (request_doc, METADATA_FIELD));
 
-   /* Respond and make sure the ping command succeeds */
-   reply = bson_strdup_printf (
-      "{'ok': 1,"
-      " 'setName': 'rs',"
-      " 'ismaster': true,"
-      " 'hosts': ['%s']}",
-      mock_server_get_host_and_port (server));
-   mock_server_replies_simple (request, reply);
+   /* Make sure the ping command succeeds */
+   mock_server_replies_simple (request, server_reply);
    request_destroy (request);
 
-   request = mock_server_receives_command (server, "admin", MONGOC_QUERY_NONE,
+   request = mock_server_receives_command (server, "admin",
+                                           MONGOC_QUERY_SLAVE_OK,
                                            "{'ping': 1}");
    mock_server_replies_ok_and_destroys (request);
-   /* request destroyed now */
    assert (future_get_bool (future));
    future_destroy (future);
 
+   /* Wait for the isMaster cooldown to end. Then call topology_select
+      which will run isMaster again. This time we want to be sure isMaster
+      does NOT contain the metadata field
+    */
 
-   /* Wait for cooldown to end (5.1 seconds) */
-   fprintf (stderr, "Entering cooldown\n");
-
-   /* Sleep for 2 heartbeats, and then client's cooldown will end
-      sent another ping */
+   /* Wait for 2 heartbeats. By the time this is done
+      the cooldown will be over*/
    _mongoc_usleep (500 * 2 * 1000);
 
    future = future_topology_select (client->topology, MONGOC_SS_READ,
                                     NULL, &error);
    request = mock_server_receives_ismaster (server);
-   mock_server_replies_simple (request, reply);
-
    ASSERT (request);
-   request_destroy (request);
+   request_doc = request_get_doc (request, 0);
+   ASSERT (request_doc);
+   ASSERT (bson_has_field (request_doc, "isMaster"));
+   ASSERT (!bson_has_field (request_doc, METADATA_FIELD));
+
+   mock_server_replies_simple (request, server_reply);
 
    sd = future_get_mongoc_server_description_ptr (future);
    ASSERT (sd);
 
+   /* cleanup */
    mongoc_server_description_destroy (sd);
+   request_destroy (request);
    future_destroy (future);
-   /* TODO: How to test subsequent isMaster commands DONT have the extra info */
 
-   bson_free (reply);
    mongoc_client_destroy (client);
    mongoc_uri_destroy (uri);
    mock_server_destroy (server);
