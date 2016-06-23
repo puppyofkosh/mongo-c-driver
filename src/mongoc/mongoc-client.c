@@ -2179,8 +2179,7 @@ static char* windows_get_version_string ()
    VS_FIXEDFILEINFO *vinfo;
 
    /* Following instructions from
-      https://msdn.microsoft.com/en-us/library/windows/
-      desktop/ms724429(v=vs.85).aspx
+      https://msdn.microsoft.com/en-us/library/windows/desktop/ms724429(v=vs.85).aspx
 
       and following general idea of python's sys.getwindowsversion()
     */

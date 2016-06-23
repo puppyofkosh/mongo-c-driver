@@ -118,6 +118,8 @@ _mongoc_topology_scanner_cb (uint32_t      id,
 
       mongoc_topology_reconcile(topology);
 
+      /* TODO: Try setting a flag here */
+
       /* TODO only wake up all clients if we found any topology changes */
       mongoc_cond_broadcast (&topology->cond_client);
    }

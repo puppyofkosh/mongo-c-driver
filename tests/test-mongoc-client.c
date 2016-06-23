@@ -1711,12 +1711,18 @@ test_mongoc_client_metadata ()
    client = test_framework_client_new ();
    ASSERT (client);
 
+   /* TODO: Remove this */
+   metadata = bson_as_json (&client->metadata, NULL);
+   fprintf (stderr, "\n\n\n%s\nLEN %d\n\n", metadata, client->metadata.len);
+   ASSERT (metadata);
+   bson_free (metadata);
+
    before_size = client->metadata.len;
    /* Check that setting too long a name causes failure */
    ASSERT (!mongoc_client_set_application (client, big_string));
    /* Nothing changed */
    ASSERT (client->metadata.len == before_size);
-   
+
    /* Check that setting a name which appears to be small enough to fit
       but actually won't doesn't cause a problem */
    space_left = METADATA_MAX_SIZE - client->metadata.len;
