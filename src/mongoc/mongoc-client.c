@@ -2162,7 +2162,7 @@ static void get_system_info (const char** name, const char** architecture,
    }
 
    if (version) {
-      *version = bson_strdup (sysinfo.version);
+      *version = bson_strdup (sysinfo.release);
    }
 }
 #else
@@ -2309,7 +2309,9 @@ void mongoc_client_metadata_init (bson_t* metadata)
 
                 "platform",
                 "CC=" MONGOC_CC " "
-                "CLFAGS=" MONGOC_CFLAGS " "
+                /* "CLFAGS=" MONGOC_CFLAGS " " */
+                /* Not including this because its too big and is reflected in
+                   configure_args */
                 "./configure " MONGOC_CONFIGURE_ARGS);
 
    bson_free ((char*)name);
