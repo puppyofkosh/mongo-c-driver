@@ -1781,16 +1781,20 @@ test_client_sends_metadata () {
    mock_server_t *server;
    mongoc_uri_t *uri;
    mongoc_client_t *client;
-   bson_error_t error;
    future_t *future;
    request_t *request;
-   char *reply;
+   const char *reply;
    const bson_t* request_doc;
+   bson_error_t error;
+   mongoc_server_description_t* sd;
 
+   /* TODO: Remove rs and remove hosts field */
+   
    server = mock_server_new ();
    mock_server_run (server);
    uri = mongoc_uri_copy (mock_server_get_uri (server));
    mongoc_uri_set_option_as_utf8 (uri, "replicaSet", "rs");
+   mongoc_uri_set_option_as_int32 (uri, "heartbeatFrequencyMS", 500);
    client = mongoc_client_new_from_uri (uri);
 
    future = future_client_command_simple (client,
@@ -1799,7 +1803,6 @@ test_client_sends_metadata () {
                                           NULL,
                                           NULL,
                                           &error);
-
    request = mock_server_receives_ismaster (server);
 
    /* Make sure the request has a "meta" field: */
@@ -1821,13 +1824,34 @@ test_client_sends_metadata () {
    request = mock_server_receives_command (server, "admin", MONGOC_QUERY_NONE,
                                            "{'ping': 1}");
    mock_server_replies_ok_and_destroys (request);
+   /* request destroyed now */
    assert (future_get_bool (future));
+   future_destroy (future);
 
 
+   /* Wait for cooldown to end (5.1 seconds) */
+   fprintf (stderr, "Entering cooldown\n");
+
+   /* Sleep for 2 heartbeats, and then client's cooldown will end
+      sent another ping */
+   _mongoc_usleep (500 * 2 * 1000);
+
+   future = future_topology_select (client->topology, MONGOC_SS_READ,
+                                    NULL, &error);
+   request = mock_server_receives_ismaster (server);
+   mock_server_replies_simple (request, reply);
+
+   ASSERT (request);
+   request_destroy (request);
+
+   sd = future_get_mongoc_server_description_ptr (future);
+   ASSERT (sd);
+
+   mongoc_server_description_destroy (sd);
+   future_destroy (future);
    /* TODO: How to test subsequent isMaster commands DONT have the extra info */
 
    bson_free (reply);
-   future_destroy (future);
    mongoc_client_destroy (client);
    mongoc_uri_destroy (uri);
    mock_server_destroy (server);
