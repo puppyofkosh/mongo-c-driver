@@ -2110,6 +2110,9 @@ bool mongoc_client_set_metadata (mongoc_client_t              *client,
                                  const char                   *platform)
 {
    bson_t new_metadata;
+
+   /* TODO: Do a check if this has already been called */
+
    bool ret = mongoc_client_metadata_set_data (&client->metadata,
                                                &new_metadata,
                                                driver_name,
