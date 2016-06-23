@@ -1802,6 +1802,9 @@ test_client_sends_metadata () {
                                           &error);
    request = mock_server_receives_ismaster (server);
 
+   /* TODO: Check isMaster still has metadata field if server hangs
+      up first time */
+
    /* Make sure the isMaster request has a "meta" field: */
    ASSERT (request);
    request_doc = request_get_doc (request, 0);

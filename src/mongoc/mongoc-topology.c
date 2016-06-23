@@ -118,7 +118,15 @@ _mongoc_topology_scanner_cb (uint32_t      id,
 
       mongoc_topology_reconcile(topology);
 
-      /* TODO: Try setting a flag here */
+      /*
+        Tell the topology scanner that it no longer needs to send the client
+        metadata in future isMaster calls
+
+        Since we make the initial isMaster calls asynchronously,
+        there's no clear "first" one. This means we send the client metadata
+        to ALL of the servers we initially do isMaster on
+       */
+      mongoc_topology_scanner_set_client_metadata (topology->scanner, NULL);
 
       /* TODO only wake up all clients if we found any topology changes */
       mongoc_cond_broadcast (&topology->cond_client);

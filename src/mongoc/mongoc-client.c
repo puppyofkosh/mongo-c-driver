@@ -1922,6 +1922,8 @@ mongoc_client_set_application (mongoc_client_t              *client,
 
    if (res) {
       /* FIXME: probably don't do this */
+
+      /* FIXME this is definitely not thread safe */
       mongoc_topology_scanner_set_client_metadata (client->topology->scanner,
                                                    &client->metadata);
    }
