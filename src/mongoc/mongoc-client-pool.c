@@ -377,14 +377,25 @@ bool
 mongoc_client_pool_set_application (mongoc_client_pool_t   *pool,
                                     const char             *application_name)
 {
-
    bool ret;
+   bson_t* metadata;
    /* Locking mutex even though this function can only get called once because
       we don't want to write to the metadata bson_t if someone else is reading
       from it at the same time */
    mongoc_mutex_lock (&pool->mutex);
-   ret = mongoc_client_metadata_set_application (&pool->metadata,
-                                                 application_name);
+
+   if (mongoc_topology_is_scanner_active (pool->topology)) {
+      /* Once the scanner is active we cannot tell it to send
+         different metadata */
+      ret = false;
+      goto done;
+   }
+
+   /* TODO: fail if application is already set */
+
+   metadata = &pool->topology->scanner->ismaster_metadata;
+   ret = mongoc_client_metadata_set_application (metadata, application_name);
+done:
    mongoc_mutex_unlock (&pool->mutex);
 
    return ret;

@@ -744,6 +744,19 @@ mongoc_topology_server_timestamp (mongoc_topology_t *topology,
    return timestamp;
 }
 
+
+bool
+mongoc_topology_is_scanner_active (mongoc_topology_t* topology) {
+   bool ret;
+
+   /* Technically scanner_active is only accessed by one thread so we shouldn't
+      need to lock this mutex, but it feels a little safer */
+   mongoc_mutex_lock (&topology->mutex);
+   ret = topology->scanner_active;
+   mongoc_mutex_unlock (&topology->mutex);
+   return ret;
+}
+
 /*
  *--------------------------------------------------------------------------
  *

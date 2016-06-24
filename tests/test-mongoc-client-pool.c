@@ -214,19 +214,40 @@ static void
 test_mongoc_client_pool_metadata ()
 {
    mongoc_client_pool_t *pool;
+   mongoc_client_t* client;
    mongoc_uri_t *uri;
-   char* str = NULL;
-   bson_t metadata;
 
    uri = mongoc_uri_new("mongodb://127.0.0.1?maxpoolsize=1&minpoolsize=1");
    pool = mongoc_client_pool_new(uri);
 
-   ASSERT (mongoc_client_pool_set_application (pool, "some application"));
 
-   mongoc_client_pool_get_metadata (pool, &metadata);
-   str = bson_as_json (&metadata, NULL);
-   fprintf (stderr, "\n\n\n%s\n\n\n", str);
-   bson_free (str);
+   ASSERT (mongoc_client_pool_set_application (pool, "some application"));
+   /* Be sure we can't set it twice */
+   ASSERT (!mongoc_client_pool_set_application (pool, "a"));
+
+   /*
+     NYI
+     ASSERT (mongoc_client_pool_set_metadata (pool, "php driver", "version abc",
+                                            "./configure -nottoomanyflags"));
+   */
+   mongoc_client_pool_destroy (pool);
+
+   /* ===
+      Make sure that after we pop a client we can't set metadata anymore
+      === */
+   pool = mongoc_client_pool_new(uri);
+
+   client = mongoc_client_pool_pop (pool);
+
+   /* Be sure a client can't set it now that we've popped them */
+   ASSERT (!mongoc_client_set_application (client, "a"));
+
+   mongoc_client_pool_push (pool, client);
+
+   /* even now that we pushed the client back we shouldn't be able to set
+      the metadata */
+   ASSERT (!mongoc_client_pool_set_application (pool, "a"));
+   ASSERT (!mongoc_client_pool_set_metadata (pool, "a", NULL, NULL));
 
    mongoc_uri_destroy(uri);
    mongoc_client_pool_destroy(pool);

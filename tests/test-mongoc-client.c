@@ -1741,6 +1741,9 @@ test_mongoc_client_metadata ()
    /* Success case */
    ASSERT (mongoc_client_set_application (client, short_string));
 
+   /* Make sure we can't set it twice */
+   ASSERT (!mongoc_client_set_application (client, "a"));
+
    /* TODO: remove this*/
    str = bson_as_json (metadata, NULL);
    fprintf (stderr, "\n\nMETADATA:\n%s\nLEN: %d\n\n", str,

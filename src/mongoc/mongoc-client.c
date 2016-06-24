@@ -1915,15 +1915,10 @@ mongoc_client_set_application (mongoc_client_t              *client,
    bool res;
    bson_t* metadata;
 
-   /* Technically scanner_active is only accessed by one thread so we shouldn't
-      need to lock this mutex, but it seems safer this way =/*/
-   mongoc_mutex_lock (&client->topology->mutex);
-   if (client->topology->scanner_active) {
+   if (mongoc_topology_is_scanner_active (client->topology)) {
       /* Once the scanner has started we cannot change any of its data */
-      mongoc_mutex_unlock (&client->topology->mutex);
       return false;
    }
-   mongoc_mutex_unlock (&client->topology->mutex);
 
    metadata = &client->topology->scanner->ismaster_metadata;
    res = mongoc_client_metadata_set_application (metadata, application_name);
@@ -1947,7 +1942,6 @@ mongoc_client_metadata_set_application (bson_t               *metadata,
 
    /* Check if we've already added application info to the metadata */
    if (bson_iter_init_find (&iter, metadata, app_field)) {
-      MONGOC_ERROR ("Can only set application once");
       return false;
    }
 
@@ -2115,15 +2109,10 @@ bool mongoc_client_set_metadata (mongoc_client_t              *client,
    bool ret;
    bson_t* metadata;
 
-   /* Technically scanner_active is only accessed by one thread so we shouldn't
-      need to lock this mutex, but it seems safer this way =/*/
-   mongoc_mutex_lock (&client->topology->mutex);
-   if (client->topology->scanner_active) {
+   if (mongoc_topology_is_scanner_active (client->topology)) {
       /* Once the scanner has started we cannot change any of its data */
-      mongoc_mutex_unlock (&client->topology->mutex);
       return false;
    }
-   mongoc_mutex_unlock (&client->topology->mutex);
 
    metadata = &client->topology->scanner->ismaster_metadata;
    /* TODO: Do a check to see if this has already been called */
