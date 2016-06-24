@@ -1929,64 +1929,60 @@ bool
 mongoc_client_metadata_set_application (bson_t               *metadata,
                                         const char           *application_name)
 {
+   uint32_t predicted_bson_size;
    bson_iter_t iter;
    bson_t application;
-   bson_t metadata_copy;
-   const char* app_field = METADATA_APPLICATION_FIELD;
    uint32_t application_name_len;
 
    BSON_ASSERT (metadata);
    BSON_ASSERT (application_name);
 
-   bson_iter_init (&iter, metadata);
-
    /* Check if we've already added application info to the metadata */
-   if (bson_iter_init_find (&iter, metadata, app_field)) {
+   if (bson_iter_init_find (&iter, metadata, METADATA_APPLICATION_FIELD)) {
       return false;
    }
 
    application_name_len = (uint32_t)strlen (application_name);
 
-   /* Another option to this check is to just rely on the bson spec and
-      do some computation like name_len + 1 + key_len +
-      metadata->len + 1 + 1 + 4 > METADATA_MAX_SIZE
-      but that seems too inflexible
-   */
+   /* This may not be pretty. The alternative is to make a copy of
+      the document, add the new string to it, and then check its size
+      afterwards, and if its too big, copy it back */
+   predicted_bson_size =
+      /* current metadata size */
+      metadata->len +
+      /* embedded document adds 1 byte for tag, 4 for size, 1 for
+         document null terminator */
+      1 + 4 + 1 +
+      /* "application" field name */
+      (strlen (METADATA_APPLICATION_FIELD) + 1) +
 
-   /* Do a cursory check: whether or not the metadata doc will be too big */
-   if (application_name_len + metadata->len > METADATA_MAX_SIZE) {
-      /* Just because this check passes doesn't mean we WON'T go over size
-         because of the extra bson overhead
-       */
+      /* 1 byte for utf8 identifier of "name" field */
+      1 +
+      /* key size */
+      (strlen (METADATA_APPLICATION_NAME_FIELD) + 1) +
+      /* 4 bytes for length of string (the actual application name) */
+      4 +
+      /* application name len */
+      (application_name_len + 1);
+
+   if (predicted_bson_size > METADATA_MAX_SIZE) {
       return false;
    }
 
-   /* Make a copy of the metadata in case when adding the application
-      field we do go over size
-    */
-   bson_copy_to (metadata, &metadata_copy);
-
-   bson_append_document_begin(metadata, app_field, -1, &application);
+   bson_append_document_begin(metadata, METADATA_APPLICATION_FIELD,
+                              -1, &application);
    bson_append_utf8 (&application,
                      METADATA_APPLICATION_NAME_FIELD,
                      -1,
                      application_name, application_name_len);
    bson_append_document_end(metadata, &application);
 
-   /* If the metadata doc is now oversized, we switch back to the copy
-      and return false */
-   if (metadata->len > METADATA_MAX_SIZE) {
-      bson_destroy (metadata);
-      bson_steal (metadata, &metadata_copy);
-
-      return false;
-   } else {
-      /* We no longer need the copy */
-      bson_destroy (&metadata_copy);
-   }
+   /* Make sure our prediction was valid */
+   BSON_ASSERT (metadata->len == predicted_bson_size);
 
    return true;
 }
+
 
 /*
   Turn an iter pointing to the contents of(src_driver):
@@ -2117,6 +2113,8 @@ bool mongoc_client_set_metadata (mongoc_client_t              *client,
    metadata = &client->topology->scanner->ismaster_metadata;
    /* TODO: Do a check to see if this has already been called */
 
+   /* Make a copy of the metadata with the "new" strings. If it ends up
+      being too big, then we just keep the original copy */
    ret = mongoc_client_metadata_set_data (metadata,
                                           &new_metadata,
                                           driver_name,
@@ -2125,12 +2123,6 @@ bool mongoc_client_set_metadata (mongoc_client_t              *client,
 
    if (!ret || new_metadata.len > METADATA_MAX_SIZE) {
       /* cleanup, don't change client->metadata */
-
-      /* TODO: Remove */
-      fprintf (stderr, "Total size would be %d-> %d\n",
-               metadata->len,
-               new_metadata.len);
-
       bson_destroy (&new_metadata);
       return false;
    } else {

@@ -391,8 +391,6 @@ mongoc_client_pool_set_application (mongoc_client_pool_t   *pool,
       goto done;
    }
 
-   /* TODO: fail if application is already set */
-
    metadata = &pool->topology->scanner->ismaster_metadata;
    ret = mongoc_client_metadata_set_application (metadata, application_name);
 done:
