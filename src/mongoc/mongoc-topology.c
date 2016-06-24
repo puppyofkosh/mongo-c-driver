@@ -24,9 +24,6 @@ static void
 _mongoc_topology_background_thread_stop (mongoc_topology_t *topology);
 
 static void
-_mongoc_topology_background_thread_start (mongoc_topology_t *topology);
-
-static void
 _mongoc_topology_request_scan (mongoc_topology_t *topology);
 
 static bool
@@ -243,10 +240,6 @@ mongoc_topology_new (const mongoc_uri_t *uri,
                                               hl->host_and_port,
                                               &id);
       mongoc_topology_scanner_add (topology->scanner, hl, id);
-   }
-
-   if (! topology->single_threaded) {
-       _mongoc_topology_background_thread_start (topology);
    }
 
    return topology;
@@ -862,7 +855,7 @@ DONE:
 /*
  *--------------------------------------------------------------------------
  *
- * mongoc_topology_background_thread_start --
+ * mongoc_topology_start_background_scanner
  *
  *       Start the topology background thread running. This should only be
  *       called once per pool. If clients are created separately (not
@@ -874,17 +867,19 @@ DONE:
  *--------------------------------------------------------------------------
  */
 
-static void
-_mongoc_topology_background_thread_start (mongoc_topology_t *topology)
+bool
+mongoc_topology_start_background_scanner (mongoc_topology_t *topology)
 {
    bool launch_thread = true;
 
    if (topology->single_threaded) {
-      return;
+      return false;
    }
 
    mongoc_mutex_lock (&topology->mutex);
-   if (topology->bg_thread_state != MONGOC_TOPOLOGY_BG_OFF) launch_thread = false;
+   if (topology->bg_thread_state != MONGOC_TOPOLOGY_BG_OFF) {
+      launch_thread = false;
+   }
    topology->bg_thread_state = MONGOC_TOPOLOGY_BG_RUNNING;
    mongoc_mutex_unlock (&topology->mutex);
 
@@ -893,6 +888,8 @@ _mongoc_topology_background_thread_start (mongoc_topology_t *topology)
       mongoc_thread_create (&topology->thread, _mongoc_topology_run_background,
                             topology);
    }
+
+   return launch_thread;
 }
 
 /*

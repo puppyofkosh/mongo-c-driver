@@ -101,4 +101,6 @@ mongoc_topology_invalidate_server (mongoc_topology_t  *topology,
 int64_t
 mongoc_topology_server_timestamp (mongoc_topology_t *topology,
                                   uint32_t           id);
+
+bool mongoc_topology_start_background_scanner (mongoc_topology_t* topology);
 #endif
