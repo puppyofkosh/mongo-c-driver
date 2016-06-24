@@ -103,6 +103,8 @@ struct _mongoc_client_t
 
    int32_t                    error_api_version;
    bool                       error_api_set;
+
+   bool                       metadata_set;
 };
 
 
@@ -154,6 +156,11 @@ mongoc_client_metadata_init             (bson_t* metadata);
 bool
 mongoc_client_metadata_set_application  (bson_t              *metadata,
                                          const char          *application_name);
+bool
+mongoc_client_metadata_set_data (bson_t                    *old_metadata,
+                                 const char                *driver_name,
+                                 const char                *version,
+                                 const char                *platform);
 BSON_END_DECLS
 
 

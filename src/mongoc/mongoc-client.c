@@ -750,6 +750,7 @@ _mongoc_client_new_from_uri (const mongoc_uri_t *uri, mongoc_topology_t *topolog
    client->initiator = mongoc_client_default_stream_initiator;
    client->initiator_data = client;
    client->topology = topology;
+   client->metadata_set = false;
 
    mongoc_client_metadata_init (&client->topology->scanner->ismaster_metadata);
 
@@ -2036,7 +2037,6 @@ static void update_driver_doc (bson_iter_t* src_iter,
 }
 
 bool mongoc_client_metadata_set_data (bson_t                    *old_metadata,
-                                      bson_t                    *buffer,
                                       const char                *driver_name,
                                       const char                *version,
                                       const char                *platform)
@@ -2044,14 +2044,14 @@ bool mongoc_client_metadata_set_data (bson_t                    *old_metadata,
    bson_iter_t iter;
    bson_iter_t sub_iter;
    bson_t child;
+   bson_t buffer;
    const char* key;
    const char* value;
    const char* new_val;
 
    BSON_ASSERT (old_metadata);
-   BSON_ASSERT (buffer);
 
-   bson_init (buffer);
+   bson_init (&buffer);
 
    if (!bson_iter_init (&iter, old_metadata)) {
       MONGOC_ERROR ("Couldn't make iter for old_metadata");
@@ -2059,8 +2059,7 @@ bool mongoc_client_metadata_set_data (bson_t                    *old_metadata,
    }
 
    /* Build a copy of the current metadata, changing the appropriate fields
-      as we go. Then overwrite the current metadata with this one
-    */
+      as we go. Then overwrite the current metadata with this one */
    while (bson_iter_next (&iter)) {
       key = bson_iter_key (&iter);
 
@@ -2070,7 +2069,7 @@ bool mongoc_client_metadata_set_data (bson_t                    *old_metadata,
          value = bson_iter_utf8 (&iter, NULL);
 
          new_val = bson_strdup_printf ("%s / %s", value, platform);
-         bson_append_utf8 (buffer, METADATA_PLATFORM_FIELD, -1,
+         bson_append_utf8 (&buffer, METADATA_PLATFORM_FIELD, -1,
                            new_val, -1);
          bson_free ((char*)new_val);
          continue;
@@ -2082,18 +2081,28 @@ bool mongoc_client_metadata_set_data (bson_t                    *old_metadata,
          BSON_ASSERT (BSON_ITER_HOLDS_DOCUMENT (&iter));
          bson_iter_recurse (&iter, &sub_iter);
 
-         bson_append_document_begin (buffer, METADATA_DRIVER_FIELD, -1,
+         bson_append_document_begin (&buffer, METADATA_DRIVER_FIELD, -1,
                                      &child);
          update_driver_doc (&sub_iter, &child, driver_name, version);
-         bson_append_document_end (buffer, &child);
+         bson_append_document_end (&buffer, &child);
          continue;
       }
 
       /* Otherwise just copy whatever's already in src */
-      bson_append_iter (buffer, key, -1, &iter);
+      bson_append_iter (&buffer, key, -1, &iter);
    }
 
-   return true;
+   /* Check if the new metadata is too big */
+   if (buffer.len > METADATA_MAX_SIZE) {
+      /* cleanup, don't change client->metadata */
+      bson_destroy (&buffer);
+      return false;
+   } else {
+      bson_destroy (old_metadata);
+      bson_steal (old_metadata, &buffer);
+
+      return true;
+   }
 }
 
 bool mongoc_client_set_metadata (mongoc_client_t              *client,
@@ -2101,9 +2110,13 @@ bool mongoc_client_set_metadata (mongoc_client_t              *client,
                                  const char                   *version,
                                  const char                   *platform)
 {
-   bson_t new_metadata;
    bool ret;
    bson_t* metadata;
+
+   if (client->metadata_set) {
+      /* This function's already been called */
+      return false;
+   }
 
    if (mongoc_topology_is_scanner_active (client->topology)) {
       /* Once the scanner has started we cannot change any of its data */
@@ -2116,20 +2129,14 @@ bool mongoc_client_set_metadata (mongoc_client_t              *client,
    /* Make a copy of the metadata with the "new" strings. If it ends up
       being too big, then we just keep the original copy */
    ret = mongoc_client_metadata_set_data (metadata,
-                                          &new_metadata,
                                           driver_name,
                                           version,
                                           platform);
 
-   if (!ret || new_metadata.len > METADATA_MAX_SIZE) {
-      /* cleanup, don't change client->metadata */
-      bson_destroy (&new_metadata);
-      return false;
-   } else {
-      bson_destroy (metadata);
-      bson_steal (metadata, &new_metadata);
-      return true;
+   if (ret) {
+      client->metadata_set = true;
    }
+   return ret;
 }
 
 #ifndef _WIN32

@@ -48,9 +48,9 @@ struct _mongoc_client_pool_t
    mongoc_apm_callbacks_t  apm_callbacks;
    void                   *apm_context;
 
-   bson_t                  metadata;
-
    int32_t                 error_api_version;
+
+   bool                    metadata_set;
 };
 
 
@@ -112,7 +112,7 @@ mongoc_client_pool_new (const mongoc_uri_t *uri)
    topology = mongoc_topology_new(uri, false);
    pool->topology = topology;
 
-   mongoc_client_metadata_init (&pool->metadata);
+   mongoc_client_metadata_init (&pool->topology->scanner->ismaster_metadata);
 
    pool->error_api_version = MONGOC_ERROR_API_VERSION_LEGACY;
 
@@ -154,8 +154,6 @@ mongoc_client_pool_destroy (mongoc_client_pool_t *pool)
    mongoc_uri_destroy(pool->uri);
    mongoc_mutex_destroy(&pool->mutex);
    mongoc_cond_destroy(&pool->cond);
-
-   bson_destroy (&pool->metadata);
 
 #ifdef MONGOC_ENABLE_SSL
    _mongoc_ssl_opts_cleanup (&pool->ssl_opts);
@@ -329,7 +327,7 @@ mongoc_client_pool_get_metadata (mongoc_client_pool_t *pool,
    BSON_ASSERT (buf);
 
    mongoc_mutex_lock (&pool->mutex);
-   bson_copy_to (&pool->metadata, buf);
+   bson_copy_to (&pool->topology->scanner->ismaster_metadata, buf);
    mongoc_mutex_unlock (&pool->mutex);
 
    EXIT;
@@ -405,6 +403,32 @@ mongoc_client_pool_set_metadata (mongoc_client_pool_t   *pool,
                                  const char             *version,
                                  const char             *platform)
 {
-   /* TODO: Should lock/unlock mutex */
-   return false;
+   bool ret = false;
+   bson_t* metadata;
+
+   mongoc_mutex_lock (&pool->mutex);
+
+   if (pool->metadata_set) {
+      goto done;
+   }
+
+   if (mongoc_topology_is_scanner_active (pool->topology)) {
+      /* Once the scanner is active we cannot tell it to send
+         different metadata */
+      goto done;
+   }
+
+   metadata = &pool->topology->scanner->ismaster_metadata;
+   ret = mongoc_client_metadata_set_data (metadata,
+                                          driver_name,
+                                          version,
+                                          platform);
+
+   if (ret) {
+      pool->metadata_set = true;
+   }
+done:
+   mongoc_mutex_unlock (&pool->mutex);
+
+   return ret;
 }

@@ -1761,15 +1761,20 @@ test_mongoc_client_metadata ()
    mongoc_client_destroy (client2);
 
    /* Try with some strings which are too long */
+   before_size = metadata->len;
    ASSERT (!mongoc_client_set_metadata (client,
                                         big_string,
                                         big_string,
                                         big_string));
+   ASSERT (metadata->len == before_size);
 
    /* Try the set_metadata function with reasonable values */
    ASSERT (mongoc_client_set_metadata (client, "Driver name",
                                        "Driver version 123",
                                        "platform abc"));
+
+   /* make sure it can't be set twice */
+   ASSERT (!mongoc_client_set_metadata (client, "a", "a", "a"));
 
    /* TODO: Remove this */
    str = bson_as_json (metadata, NULL);
