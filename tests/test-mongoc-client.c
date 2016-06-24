@@ -1712,7 +1712,7 @@ test_mongoc_client_metadata ()
    client = test_framework_client_new ();
    ASSERT (client);
 
-   metadata = &client->topology->ismaster_metadata;
+   metadata = &client->topology->scanner->ismaster_metadata;
 
    /* TODO: Remove this */
    str = bson_as_json (metadata, NULL);

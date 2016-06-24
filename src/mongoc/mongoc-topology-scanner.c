@@ -42,6 +42,11 @@ mongoc_topology_scanner_ismaster_handler (mongoc_async_cmd_result_t async_status
                                           void                     *data,
                                           bson_error_t             *error);
 
+static inline void init_ismaster (bson_t* cmd) {
+   bson_init (cmd);
+   BSON_APPEND_INT32 (cmd, "isMaster", 1);
+}
+
 mongoc_topology_scanner_t *
 mongoc_topology_scanner_new (const mongoc_uri_t          *uri,
                              mongoc_topology_scanner_cb_t cb,
@@ -51,8 +56,8 @@ mongoc_topology_scanner_new (const mongoc_uri_t          *uri,
 
    ts->async = mongoc_async_new ();
 
-   bson_init (&ts->ismaster_cmd);
-   mongoc_topology_scanner_set_ismaster_metadata (ts, NULL);
+   init_ismaster (&ts->ismaster_cmd);
+   bson_init (&ts->ismaster_metadata);
 
    ts->cb = cb;
    ts->cb_data = data;
@@ -528,10 +533,13 @@ mongoc_topology_scanner_node_setup (mongoc_topology_scanner_node_t *node,
 void
 mongoc_topology_scanner_start (mongoc_topology_scanner_t *ts,
                                int32_t timeout_msec,
-                               bool obey_cooldown)
+                               bool obey_cooldown,
+                               bool include_metadata)
 {
    mongoc_topology_scanner_node_t *node, *tmp;
    int64_t cooldown = INT64_MAX;
+   bson_t ismaster_cmd_with_metadata;
+   const bson_t *ismaster_cmd_to_send;
    BSON_ASSERT (ts);
 
    if (ts->in_progress) {
@@ -546,6 +554,18 @@ mongoc_topology_scanner_start (mongoc_topology_scanner_t *ts,
                  - 1000 * MONGOC_TOPOLOGY_COOLDOWN_MS;
    }
 
+   if (include_metadata) {
+      /* Make a new document which includes both isMaster and the metadata
+         and we'll send that */
+      init_ismaster (&ismaster_cmd_with_metadata);
+      BSON_APPEND_DOCUMENT (&ismaster_cmd_with_metadata,
+                            METADATA_FIELD,
+                            &ts->ismaster_metadata);
+      ismaster_cmd_to_send = &ismaster_cmd_with_metadata;
+   } else {
+      ismaster_cmd_to_send = &ts->ismaster_cmd;
+   }
+
    DL_FOREACH_SAFE (ts->nodes, node, tmp)
    {
       /* check node if it last failed before current cooldown period began */
@@ -557,7 +577,7 @@ mongoc_topology_scanner_start (mongoc_topology_scanner_t *ts,
             node->cmd = mongoc_async_cmd (
                ts->async, node->stream, ts->setup,
                node->host.host, "admin",
-               &ts->ismaster_cmd,
+               ismaster_cmd_to_send,
                &mongoc_topology_scanner_ismaster_handler,
                node, timeout_msec);
          }
@@ -675,26 +695,5 @@ mongoc_topology_scanner_reset (mongoc_topology_scanner_t *ts)
       if (node->retired) {
          mongoc_topology_scanner_node_destroy (node, true);
       }
-   }
-}
-
-/*
- * update the ismaster_cmd command to include given metadata document
- * hackish version
- * TODO: this is horrible
- */
-void
-mongoc_topology_scanner_set_ismaster_metadata (mongoc_topology_scanner_t *ts,
-                                               bson_t *metadata_doc) {
-   BSON_ASSERT (ts);
-
-   /* TODO: dont reinitialize the whole document again... */
-   /* reinitialize the whole document (again, hackish, I know) */
-   bson_reinit (&ts->ismaster_cmd);
-   BSON_APPEND_INT32 (&ts->ismaster_cmd, "isMaster", 1);
-
-   if (metadata_doc) {
-      bson_append_document (&ts->ismaster_cmd, METADATA_FIELD, -1,
-                            metadata_doc);
    }
 }

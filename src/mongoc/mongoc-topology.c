@@ -116,14 +116,9 @@ _mongoc_topology_scanner_cb (uint32_t      id,
       mongoc_topology_reconcile(topology);
 
       /*
-        Tell the topology scanner that it no longer needs to send the client
-        metadata in future isMaster calls
-
-        Since we make the initial isMaster calls asynchronously,
-        there's no clear "first" one. This means we send the client metadata
-        to ALL of the servers we initially do isMaster on
-       */
-      mongoc_topology_scanner_set_ismaster_metadata (topology->scanner, NULL);
+        In future calls to mongoc_topology_scanner_start we won't pass any
+        additional metadata */
+      topology->ismaster_metadata_sent = true;
 
       /* TODO only wake up all clients if we found any topology changes */
       mongoc_cond_broadcast (&topology->cond_client);
@@ -235,7 +230,6 @@ mongoc_topology_new (const mongoc_uri_t *uri,
    mongoc_cond_init (&topology->cond_client);
    mongoc_cond_init (&topology->cond_server);
 
-   bson_init (&topology->ismaster_metadata);
    topology->ismaster_metadata_sent = false;
 
    for ( hl = mongoc_uri_get_hosts (uri); hl; hl = hl->next) {
@@ -278,7 +272,6 @@ mongoc_topology_destroy (mongoc_topology_t *topology)
    mongoc_cond_destroy (&topology->cond_client);
    mongoc_cond_destroy (&topology->cond_server);
    mongoc_mutex_destroy (&topology->mutex);
-   bson_destroy (&topology->ismaster_metadata);
 
    bson_free(topology);
 }
@@ -342,7 +335,8 @@ _mongoc_topology_do_blocking_scan (mongoc_topology_t *topology,
    scanner = topology->scanner;
    mongoc_topology_scanner_start (scanner,
                                   (int32_t) topology->connect_timeout_msec,
-                                  true);
+                                  true,
+                                  !topology->ismaster_metadata_sent);
 
    while (_mongoc_topology_run_scanner (topology,
                                         topology->connect_timeout_msec)) {}
@@ -805,7 +799,8 @@ void * _mongoc_topology_run_background (void *data)
          if (timeout <= 0) {
             mongoc_topology_scanner_start (topology->scanner,
                                            topology->connect_timeout_msec,
-                                           false);
+                                           false,
+                                           !topology->ismaster_metadata_sent);
             break;
          } else {
             /* otherwise wait until someone:

@@ -751,9 +751,7 @@ _mongoc_client_new_from_uri (const mongoc_uri_t *uri, mongoc_topology_t *topolog
    client->initiator_data = client;
    client->topology = topology;
 
-   mongoc_client_metadata_init (&client->topology->ismaster_metadata);
-   mongoc_topology_scanner_set_ismaster_metadata (client->topology->scanner,
-                                                  &client->topology->ismaster_metadata);
+   mongoc_client_metadata_init (&client->topology->scanner->ismaster_metadata);
 
    client->error_api_version = MONGOC_ERROR_API_VERSION_LEGACY;
    client->error_api_set = false;
@@ -1927,7 +1925,7 @@ mongoc_client_set_application (mongoc_client_t              *client,
    }
    mongoc_mutex_unlock (&client->topology->mutex);
 
-   metadata = &client->topology->ismaster_metadata;
+   metadata = &client->topology->scanner->ismaster_metadata;
    res = mongoc_client_metadata_set_application (metadata, application_name);
    return res;
 }
@@ -2127,7 +2125,7 @@ bool mongoc_client_set_metadata (mongoc_client_t              *client,
    }
    mongoc_mutex_unlock (&client->topology->mutex);
 
-   metadata = &client->topology->ismaster_metadata;
+   metadata = &client->topology->scanner->ismaster_metadata;
    /* TODO: Do a check to see if this has already been called */
 
    ret = mongoc_client_metadata_set_data (metadata,
@@ -2141,7 +2139,7 @@ bool mongoc_client_set_metadata (mongoc_client_t              *client,
 
       /* TODO: Remove */
       fprintf (stderr, "Total size would be %d-> %d\n",
-               client->topology->ismaster_metadata.len,
+               metadata->len,
                new_metadata.len);
 
       bson_destroy (&new_metadata);
