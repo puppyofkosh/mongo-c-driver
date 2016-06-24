@@ -57,6 +57,7 @@ typedef struct _mongoc_topology_t
    mongoc_thread_t               thread;
 
    mongoc_topology_bg_state_t    bg_thread_state;
+   bool                          scanner_active;
    bool                          scan_requested;
    bool                          scanning;
    bool                          got_ismaster;
@@ -100,5 +101,4 @@ mongoc_topology_invalidate_server (mongoc_topology_t  *topology,
 int64_t
 mongoc_topology_server_timestamp (mongoc_topology_t *topology,
                                   uint32_t           id);
-
 #endif

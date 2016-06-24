@@ -1916,10 +1916,19 @@ mongoc_client_set_application (mongoc_client_t              *client,
                                const char                   *application_name)
 {
    bool res;
-   
+
+   /* Technically scanner_active is only accessed by one thread so we shouldn't
+      need to lock this mutex, but it seems safer this way =/*/
+   mongoc_mutex_lock (&client->topology->mutex);
+   if (client->topology->scanner_active) {
+      /* Once the scanner has started we cannot change any of its data */
+      mongoc_mutex_unlock (&client->topology->mutex);
+      return false;
+   }
+   mongoc_mutex_unlock (&client->topology->mutex);
+
    res = mongoc_client_metadata_set_application (&client->metadata,
                                                  application_name);
-
    if (res) {
       /* FIXME: probably don't do this */
 
@@ -2112,14 +2121,25 @@ bool mongoc_client_set_metadata (mongoc_client_t              *client,
                                  const char                   *platform)
 {
    bson_t new_metadata;
+   bool ret;
 
-   /* TODO: Do a check if this has already been called */
+   /* Technically scanner_active is only accessed by one thread so we shouldn't
+      need to lock this mutex, but it seems safer this way =/*/
+   mongoc_mutex_lock (&client->topology->mutex);
+   if (client->topology->scanner_active) {
+      /* Once the scanner has started we cannot change any of its data */
+      mongoc_mutex_unlock (&client->topology->mutex);
+      return false;
+   }
+   mongoc_mutex_unlock (&client->topology->mutex);
 
-   bool ret = mongoc_client_metadata_set_data (&client->metadata,
-                                               &new_metadata,
-                                               driver_name,
-                                               version,
-                                               platform);
+   /* TODO: Do a check to see if this has already been called */
+
+   ret = mongoc_client_metadata_set_data (&client->metadata,
+                                          &new_metadata,
+                                          driver_name,
+                                          version,
+                                          platform);
 
    if (!ret || new_metadata.len > METADATA_MAX_SIZE) {
       /* cleanup, don't change client->metadata */

@@ -340,6 +340,8 @@ _mongoc_topology_do_blocking_scan (mongoc_topology_t *topology,
 {
    mongoc_topology_scanner_t *scanner;
 
+   topology->scanner_active = true;
+
    scanner = topology->scanner;
    mongoc_topology_scanner_start (scanner,
                                   (int32_t) topology->connect_timeout_msec,
@@ -887,6 +889,7 @@ _mongoc_topology_background_thread_start (mongoc_topology_t *topology)
    mongoc_mutex_unlock (&topology->mutex);
 
    if (launch_thread) {
+      topology->scanner_active = true;
       mongoc_thread_create (&topology->thread, _mongoc_topology_run_background,
                             topology);
    }
