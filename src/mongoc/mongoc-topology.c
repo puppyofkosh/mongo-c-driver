@@ -123,7 +123,7 @@ _mongoc_topology_scanner_cb (uint32_t      id,
         there's no clear "first" one. This means we send the client metadata
         to ALL of the servers we initially do isMaster on
        */
-      mongoc_topology_scanner_set_client_metadata (topology->scanner, NULL);
+      mongoc_topology_scanner_set_ismaster_metadata (topology->scanner, NULL);
 
       /* TODO only wake up all clients if we found any topology changes */
       mongoc_cond_broadcast (&topology->cond_client);
@@ -235,6 +235,9 @@ mongoc_topology_new (const mongoc_uri_t *uri,
    mongoc_cond_init (&topology->cond_client);
    mongoc_cond_init (&topology->cond_server);
 
+   bson_init (&topology->ismaster_metadata);
+   topology->ismaster_metadata_sent = false;
+
    for ( hl = mongoc_uri_get_hosts (uri); hl; hl = hl->next) {
       mongoc_topology_description_add_server (&topology->description,
                                               hl->host_and_port,
@@ -275,6 +278,7 @@ mongoc_topology_destroy (mongoc_topology_t *topology)
    mongoc_cond_destroy (&topology->cond_client);
    mongoc_cond_destroy (&topology->cond_server);
    mongoc_mutex_destroy (&topology->mutex);
+   bson_destroy (&topology->ismaster_metadata);
 
    bson_free(topology);
 }

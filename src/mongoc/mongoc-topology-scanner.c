@@ -52,7 +52,7 @@ mongoc_topology_scanner_new (const mongoc_uri_t          *uri,
    ts->async = mongoc_async_new ();
 
    bson_init (&ts->ismaster_cmd);
-   mongoc_topology_scanner_set_client_metadata (ts, NULL);
+   mongoc_topology_scanner_set_ismaster_metadata (ts, NULL);
 
    ts->cb = cb;
    ts->cb_data = data;
@@ -684,8 +684,8 @@ mongoc_topology_scanner_reset (mongoc_topology_scanner_t *ts)
  * TODO: this is horrible
  */
 void
-mongoc_topology_scanner_set_client_metadata (mongoc_topology_scanner_t *ts,
-                                             bson_t *metadata_doc) {
+mongoc_topology_scanner_set_ismaster_metadata (mongoc_topology_scanner_t *ts,
+                                               bson_t *metadata_doc) {
    BSON_ASSERT (ts);
 
    /* TODO: dont reinitialize the whole document again... */

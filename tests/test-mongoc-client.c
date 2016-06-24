@@ -1701,9 +1701,10 @@ test_mongoc_client_metadata ()
    const char* short_string = "hallo thar";
    mongoc_client_t *client;
    mongoc_client_t *client2;
-   char *metadata = NULL;
+   char *str = NULL;
    int space_left;
    int before_size;
+   bson_t* metadata;
 
    memset (big_string, 'a', BUFFER_SIZE -1);
    big_string[BUFFER_SIZE - 1] = '\0';
@@ -1711,40 +1712,40 @@ test_mongoc_client_metadata ()
    client = test_framework_client_new ();
    ASSERT (client);
 
-   /* TODO: Remove this */
-   metadata = bson_as_json (&client->metadata, NULL);
-   fprintf (stderr, "\n\n\n%s\nLEN %d\n\n", metadata, client->metadata.len);
-   ASSERT (metadata);
-   bson_free (metadata);
+   metadata = &client->topology->ismaster_metadata;
 
-   before_size = client->metadata.len;
+   /* TODO: Remove this */
+   str = bson_as_json (metadata, NULL);
+   fprintf (stderr, "\n\n\n%s\nLEN %d\n\n", str, metadata->len);
+   bson_free (str);
+
+   before_size = metadata->len;
    /* Check that setting too long a name causes failure */
    ASSERT (!mongoc_client_set_application (client, big_string));
    /* Nothing changed */
-   ASSERT (client->metadata.len == before_size);
+   ASSERT (metadata->len == before_size);
 
    /* Check that setting a name which appears to be small enough to fit
       but actually won't doesn't cause a problem */
-   space_left = METADATA_MAX_SIZE - client->metadata.len;
+   space_left = METADATA_MAX_SIZE - metadata->len;
    ASSERT (space_left > 0);
 
    /* Make a string exactly this size and try to insert it.
       Should still fail since there is overhead associated with the string */
    big_string[space_left - 1] = '\0';
    ASSERT (strlen (big_string) + 1 == space_left);
-   before_size = client->metadata.len;
+   before_size = metadata->len;
    ASSERT (!mongoc_client_set_application (client, big_string));
-   ASSERT (before_size == client->metadata.len);
+   ASSERT (before_size == metadata->len);
 
    /* Success case */
    ASSERT (mongoc_client_set_application (client, short_string));
 
    /* TODO: remove this*/
-   metadata = bson_as_json (&client->metadata, NULL);
-   fprintf (stderr, "\n\nMETADATA:\n%s\nLEN: %d\n\n", metadata,
-            client->metadata.len);
-   ASSERT (metadata);
-   bson_free (metadata);
+   str = bson_as_json (metadata, NULL);
+   fprintf (stderr, "\n\nMETADATA:\n%s\nLEN: %d\n\n", str,
+            metadata->len);
+   bson_free (str);
 
    /* --set_metadata function-- */
 
@@ -1758,9 +1759,9 @@ test_mongoc_client_metadata ()
 
    /* Try with some strings which are too long */
    ASSERT (!mongoc_client_set_metadata (client,
-                                       big_string,
-                                       big_string,
-                                       big_string));
+                                        big_string,
+                                        big_string,
+                                        big_string));
 
    /* Try the set_metadata function with reasonable values */
    ASSERT (mongoc_client_set_metadata (client, "Driver name",
@@ -1768,10 +1769,9 @@ test_mongoc_client_metadata ()
                                        "platform abc"));
 
    /* TODO: Remove this */
-   metadata = bson_as_json (&client->metadata, NULL);
-   fprintf (stderr, "\n\n\n%s\n\n\n", metadata);
-   ASSERT (metadata);
-   bson_free (metadata);
+   str = bson_as_json (metadata, NULL);
+   fprintf (stderr, "\n\n\n%s\n\n\n", str);
+   bson_free (str);
 
    mongoc_client_destroy (client);
 }

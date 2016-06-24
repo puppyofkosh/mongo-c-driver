@@ -51,6 +51,9 @@ typedef struct _mongoc_topology_t
    int64_t                       server_selection_timeout_msec;
    int64_t                       heartbeat_msec;
 
+   bson_t                        ismaster_metadata;
+   bool                          ismaster_metadata_sent;
+
    mongoc_mutex_t                mutex;
    mongoc_cond_t                 cond_client;
    mongoc_cond_t                 cond_server;

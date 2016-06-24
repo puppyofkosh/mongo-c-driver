@@ -751,9 +751,9 @@ _mongoc_client_new_from_uri (const mongoc_uri_t *uri, mongoc_topology_t *topolog
    client->initiator_data = client;
    client->topology = topology;
 
-   mongoc_client_metadata_init (&client->metadata);
-   mongoc_topology_scanner_set_client_metadata(client->topology->scanner,
-                                               &client->metadata);
+   mongoc_client_metadata_init (&client->topology->ismaster_metadata);
+   mongoc_topology_scanner_set_ismaster_metadata (client->topology->scanner,
+                                                  &client->topology->ismaster_metadata);
 
    client->error_api_version = MONGOC_ERROR_API_VERSION_LEGACY;
    client->error_api_set = false;
@@ -812,7 +812,6 @@ mongoc_client_destroy (mongoc_client_t *client)
       mongoc_read_prefs_destroy (client->read_prefs);
       mongoc_cluster_destroy (&client->cluster);
       mongoc_uri_destroy (client->uri);
-      bson_destroy (&client->metadata);
 
 #ifdef MONGOC_ENABLE_SSL
       _mongoc_ssl_opts_cleanup (&client->ssl_opts);
@@ -1916,6 +1915,7 @@ mongoc_client_set_application (mongoc_client_t              *client,
                                const char                   *application_name)
 {
    bool res;
+   bson_t* metadata;
 
    /* Technically scanner_active is only accessed by one thread so we shouldn't
       need to lock this mutex, but it seems safer this way =/*/
@@ -1927,15 +1927,8 @@ mongoc_client_set_application (mongoc_client_t              *client,
    }
    mongoc_mutex_unlock (&client->topology->mutex);
 
-   res = mongoc_client_metadata_set_application (&client->metadata,
-                                                 application_name);
-   if (res) {
-      /* FIXME: probably don't do this */
-
-      /* FIXME this is definitely not thread safe */
-      mongoc_topology_scanner_set_client_metadata (client->topology->scanner,
-                                                   &client->metadata);
-   }
+   metadata = &client->topology->ismaster_metadata;
+   res = mongoc_client_metadata_set_application (metadata, application_name);
    return res;
 }
 
@@ -2122,6 +2115,7 @@ bool mongoc_client_set_metadata (mongoc_client_t              *client,
 {
    bson_t new_metadata;
    bool ret;
+   bson_t* metadata;
 
    /* Technically scanner_active is only accessed by one thread so we shouldn't
       need to lock this mutex, but it seems safer this way =/*/
@@ -2133,9 +2127,10 @@ bool mongoc_client_set_metadata (mongoc_client_t              *client,
    }
    mongoc_mutex_unlock (&client->topology->mutex);
 
+   metadata = &client->topology->ismaster_metadata;
    /* TODO: Do a check to see if this has already been called */
 
-   ret = mongoc_client_metadata_set_data (&client->metadata,
+   ret = mongoc_client_metadata_set_data (metadata,
                                           &new_metadata,
                                           driver_name,
                                           version,
@@ -2145,17 +2140,15 @@ bool mongoc_client_set_metadata (mongoc_client_t              *client,
       /* cleanup, don't change client->metadata */
 
       /* TODO: Remove */
-      fprintf (stderr, "Total size would be%d-> %d\n", client->metadata.len,
+      fprintf (stderr, "Total size would be %d-> %d\n",
+               client->topology->ismaster_metadata.len,
                new_metadata.len);
 
       bson_destroy (&new_metadata);
       return false;
    } else {
-      bson_destroy (&client->metadata);
-      bson_steal (&client->metadata, &new_metadata);
-
-      mongoc_topology_scanner_set_client_metadata (client->topology->scanner,
-                                                   &client->metadata);
+      bson_destroy (metadata);
+      bson_steal (metadata, &new_metadata);
       return true;
    }
 }
