@@ -19,7 +19,17 @@
 #ifndef _WIN32
 # include <netdb.h>
 # include <netinet/tcp.h>
+# include <sys/utsname.h>
+#else
+# include <windows.h>
+# include <stdio.h>
+
+/* TODO: I feel uncomfortable doing this. */
+# pragma comment(lib, "version.lib")
+# pragma comment(lib, "user32.lib")
+
 #endif
+
 
 #include "mongoc-cursor-array-private.h"
 #include "mongoc-client-private.h"
@@ -40,6 +50,8 @@
 #include "mongoc-util-private.h"
 #include "mongoc-set-private.h"
 #include "mongoc-log.h"
+#include "mongoc-version.h"
+
 
 #ifdef MONGOC_ENABLE_SSL
 #include "mongoc-stream-tls.h"
@@ -738,6 +750,10 @@ _mongoc_client_new_from_uri (const mongoc_uri_t *uri, mongoc_topology_t *topolog
    client->initiator = mongoc_client_default_stream_initiator;
    client->initiator_data = client;
    client->topology = topology;
+   client->metadata_set = false;
+
+   mongoc_client_metadata_init (&client->topology->scanner->ismaster_metadata);
+
    client->error_api_version = MONGOC_ERROR_API_VERSION_LEGACY;
    client->error_api_set = false;
 
@@ -1906,4 +1922,415 @@ mongoc_client_set_error_api (mongoc_client_t *client,
    client->error_api_version = version;
 
    return true;
+}
+
+bool
+mongoc_client_set_application (mongoc_client_t              *client,
+                               const char                   *application_name)
+{
+   bool res;
+   bson_t* metadata;
+
+   if (mongoc_topology_is_scanner_active (client->topology)) {
+      /* Once the scanner has started we cannot change any of its data */
+      return false;
+   }
+
+   metadata = &client->topology->scanner->ismaster_metadata;
+   res = mongoc_client_metadata_set_application (metadata, application_name);
+   return res;
+}
+
+bool
+mongoc_client_metadata_set_application (bson_t               *metadata,
+                                        const char           *application_name)
+{
+   uint32_t predicted_bson_size;
+   bson_iter_t iter;
+   bson_t application;
+   uint32_t application_name_len;
+
+   BSON_ASSERT (metadata);
+   BSON_ASSERT (application_name);
+
+   /* Check if we've already added application info to the metadata */
+   if (bson_iter_init_find (&iter, metadata, METADATA_APPLICATION_FIELD)) {
+      return false;
+   }
+
+   application_name_len = (uint32_t)strlen (application_name);
+
+   /* This may not be pretty. The alternative is to make a copy of
+      the document, add the new string to it, and then check its size
+      afterwards, and if its too big, copy it back */
+   predicted_bson_size =
+      /* current metadata size */
+      metadata->len +
+      /* embedded document adds 1 byte for tag, 4 for size, 1 for
+         document null terminator */
+      1 + 4 + 1 +
+      /* "application" field name */
+      (strlen (METADATA_APPLICATION_FIELD) + 1) +
+
+      /* 1 byte for utf8 identifier of "name" field */
+      1 +
+      /* key size */
+      (strlen (METADATA_APPLICATION_NAME_FIELD) + 1) +
+      /* 4 bytes for length of string (the actual application name) */
+      4 +
+      /* application name len */
+      (application_name_len + 1);
+
+   if (predicted_bson_size > METADATA_MAX_SIZE) {
+      return false;
+   }
+
+   bson_append_document_begin(metadata, METADATA_APPLICATION_FIELD,
+                              -1, &application);
+   bson_append_utf8 (&application,
+                     METADATA_APPLICATION_NAME_FIELD,
+                     -1,
+                     application_name, application_name_len);
+   bson_append_document_end(metadata, &application);
+
+   /* Make sure our prediction was valid */
+   BSON_ASSERT (metadata->len == predicted_bson_size);
+
+   return true;
+}
+
+
+/*
+  Turn an iter pointing to the contents of(src_driver):
+  {
+     name: "mongoc",
+     version: "1.4.0"
+  },
+
+  Into (dst_driver):
+  {
+     name: "mongoc / [name]",
+     version: "1.4.0 / [platform]"
+  },
+ */
+static void update_driver_doc (bson_iter_t* src_iter,
+                               bson_t* dst_driver,
+                               const char* name,
+                               const char* version)
+{
+   const char* key;
+   const char* value;
+   const char* new_val;
+   const char* suffix;
+
+   while (bson_iter_next (src_iter)) {
+      key = bson_iter_key (src_iter);
+      BSON_ASSERT (BSON_ITER_HOLDS_UTF8 (src_iter));
+      value = bson_iter_utf8 (src_iter, NULL);
+
+      suffix = NULL;
+      if (strcmp (key, METADATA_DRIVER_NAME_FIELD) == 0) {
+         suffix = name;
+      } else if (strcmp (key, METADATA_DRIVER_VERSION_FIELD) == 0) {
+         suffix = version;
+      } else {
+         /* Maybe bad style? */
+         BSON_ASSERT (0 && "Schema of driver field is wrong");
+      }
+
+      new_val = value;
+      if (suffix) {
+         new_val = bson_strdup_printf ("%s / %s", value, suffix);
+      }
+
+      bson_append_utf8 (dst_driver, key, -1, new_val, -1);
+
+      if (suffix) {
+         bson_free ((char*)new_val);
+      }
+   }
+}
+
+bool mongoc_client_metadata_set_data (bson_t                    *old_metadata,
+                                      const char                *driver_name,
+                                      const char                *version,
+                                      const char                *platform)
+{
+   bson_iter_t iter;
+   bson_iter_t sub_iter;
+   bson_t child;
+   bson_t buffer;
+   const char* key;
+   const char* value;
+   const char* new_val;
+
+   BSON_ASSERT (old_metadata);
+
+   bson_init (&buffer);
+
+   if (!bson_iter_init (&iter, old_metadata)) {
+      MONGOC_ERROR ("Couldn't make iter for old_metadata");
+      return false;
+   }
+
+   /* Build a copy of the current metadata, changing the appropriate fields
+      as we go. Then overwrite the current metadata with this one */
+   while (bson_iter_next (&iter)) {
+      key = bson_iter_key (&iter);
+
+      /* change platform: "whatever" to "whatever / platform-arg" */
+      if (platform && strcmp (key, METADATA_PLATFORM_FIELD) == 0) {
+         BSON_ASSERT (BSON_ITER_HOLDS_UTF8 (&iter));
+         value = bson_iter_utf8 (&iter, NULL);
+
+         new_val = bson_strdup_printf ("%s / %s", value, platform);
+         bson_append_utf8 (&buffer, METADATA_PLATFORM_FIELD, -1,
+                           new_val, -1);
+         bson_free ((char*)new_val);
+         continue;
+      }
+
+      if ((version || driver_name) &&
+          strcmp (key, METADATA_DRIVER_FIELD) == 0) {
+         /* Insert an updated copy of the document with the driver info */
+         BSON_ASSERT (BSON_ITER_HOLDS_DOCUMENT (&iter));
+         bson_iter_recurse (&iter, &sub_iter);
+
+         bson_append_document_begin (&buffer, METADATA_DRIVER_FIELD, -1,
+                                     &child);
+         update_driver_doc (&sub_iter, &child, driver_name, version);
+         bson_append_document_end (&buffer, &child);
+         continue;
+      }
+
+      /* Otherwise just copy whatever's already in src */
+      bson_append_iter (&buffer, key, -1, &iter);
+   }
+
+   /* Check if the new metadata is too big */
+   if (buffer.len > METADATA_MAX_SIZE) {
+      /* cleanup, don't change client->metadata */
+      bson_destroy (&buffer);
+      return false;
+   } else {
+      bson_destroy (old_metadata);
+      bson_steal (old_metadata, &buffer);
+
+      return true;
+   }
+}
+
+bool mongoc_client_set_metadata (mongoc_client_t              *client,
+                                 const char                   *driver_name,
+                                 const char                   *version,
+                                 const char                   *platform)
+{
+   bool ret;
+   bson_t* metadata;
+
+   if (client->metadata_set) {
+      /* This function's already been called */
+      return false;
+   }
+
+   if (mongoc_topology_is_scanner_active (client->topology)) {
+      /* Once the scanner has started we cannot change any of its data */
+      return false;
+   }
+
+   metadata = &client->topology->scanner->ismaster_metadata;
+   /* TODO: Do a check to see if this has already been called */
+
+   /* Make a copy of the metadata with the "new" strings. If it ends up
+      being too big, then we just keep the original copy */
+   ret = mongoc_client_metadata_set_data (metadata,
+                                          driver_name,
+                                          version,
+                                          platform);
+
+   if (ret) {
+      client->metadata_set = true;
+   }
+   return ret;
+}
+
+#ifndef _WIN32
+static void get_system_info (const char** name, const char** architecture,
+                             const char** version)
+{
+   struct utsname sysinfo;
+   int res;
+
+   res = uname (&sysinfo);
+
+   if (res != 0) {
+      MONGOC_ERROR ("Uname failed with error %d", errno);
+      return;
+   }
+
+   if (name) {
+      /* TODO: copy these strings */
+      *name = bson_strdup (sysinfo.sysname);
+   }
+
+   if (architecture) {
+      *architecture = bson_strdup (sysinfo.machine);
+   }
+
+   if (version) {
+      *version = bson_strdup (sysinfo.release);
+   }
+}
+#else
+static char* windows_get_version_string ()
+{
+   const char* kernel32 = "\\kernel32.dll";
+   char *path = NULL;
+   void *ver = NULL;
+   void *block;
+   char* ver_str = NULL;
+   bool r;
+   UINT n;
+   DWORD versz, blocksz;
+   VS_FIXEDFILEINFO *vinfo;
+
+   /* Following instructions from
+      https://msdn.microsoft.com/en-us/library/windows/desktop/ms724429(v=vs.85).aspx
+
+      and following general idea of python's sys.getwindowsversion()
+    */
+   /* MAX_PATH is provided by windows.h */
+   path = bson_malloc(MAX_PATH);
+   n = GetSystemDirectory(path, MAX_PATH);
+   if (n >= MAX_PATH || n == 0 ||
+       n > MAX_PATH - strlen (kernel32)) {
+      goto done;
+   }
+
+   r = strcat_s (path, MAX_PATH, kernel32);
+   if (r) {
+      goto done;
+   }
+   versz = GetFileVersionInfoSize(path, NULL);
+
+   if (versz == 0) {
+      goto done;
+   }
+
+   ver = bson_malloc(versz);
+   r = GetFileVersionInfo(path, 0, versz, ver);
+   if (!r) {
+      goto done;
+   }
+
+   r = VerQueryValue(ver, "\\", &block, &blocksz);
+   if (!r) {
+      goto done;
+   }
+   vinfo = (VS_FIXEDFILEINFO *) block;
+
+   ver_str = bson_strdup_printf ("%d.%d.%d",
+                                 (int) HIWORD(vinfo->dwProductVersionMS),
+                                 (int) LOWORD(vinfo->dwProductVersionMS),
+                                 (int) HIWORD(vinfo->dwProductVersionLS));
+
+done:
+   if (!ver_str) {
+      MONGOC_ERROR ("Getting windows version failed with error %d",
+                    GetLastError());
+   }
+
+   bson_free(path);
+   bson_free(ver);
+
+   return ver_str;
+}
+
+static char* windows_get_arch_string ()
+{
+   SYSTEM_INFO sysinfo;
+   DWORD arch;
+
+   /* doesn't return anything */
+   GetSystemInfo(&sysinfo);
+
+   arch = sysinfo.wProcessorArchitecture;
+   if (arch == PROCESSOR_ARCHITECTURE_AMD64) {
+      return bson_strdup ("x86_64");
+   } else if (arch == PROCESSOR_ARCHITECTURE_ARM) {
+      return bson_strdup ("ARM");
+   } else if (arch == PROCESSOR_ARCHITECTURE_IA64) {
+      return bson_strdup ("IA64");
+   } else if (arch == PROCESSOR_ARCHITECTURE_INTEL) {
+      return bson_strdup ("x86");
+   } else if (arch == PROCESSOR_ARCHITECTURE_UNKNOWN) {
+      return bson_strdup ("Unkown");
+   }
+
+   MONGOC_ERROR ("Processor architecture lookup failed");
+
+   return NULL;
+}
+
+static void get_system_info (const char** name, const char** architecture,
+                             const char** version)
+{
+   const char* result_str;
+
+   if (name) {
+      *name = bson_strdup ("Windows");
+   }
+
+   if (version) {
+      result_str = windows_get_version_string ();
+
+      if (result_str) {
+         *version = result_str;
+      }
+   }
+
+   if (architecture) {
+      result_str = windows_get_arch_string ();
+
+      if (result_str) {
+         *architecture = result_str;
+      }
+   }
+}
+#endif
+
+
+void mongoc_client_metadata_init (bson_t* metadata)
+{
+   const char* name = NULL;
+   const char* architecture = NULL;
+   const char* version = NULL;
+
+   BSON_ASSERT (metadata);
+   bson_init (metadata);
+
+   get_system_info (&name, &architecture, &version);
+
+   BCON_APPEND (metadata,
+                METADATA_DRIVER_FIELD, "{",
+                "name", "mongoc",
+                "version", MONGOC_VERSION_S,
+                "}",
+
+                "os", "{",
+                "name", BCON_UTF8 (name ? name : ""),
+                "architecture", BCON_UTF8 (architecture ? architecture : ""),
+                "version", BCON_UTF8 (version ? version : ""),
+                "}",
+
+                "platform",
+                "CC=" MONGOC_CC " "
+                /* "CLFAGS=" MONGOC_CFLAGS " " */
+                /* Not including this because its too big and is reflected in
+                   configure_args */
+                "./configure " MONGOC_CONFIGURE_ARGS);
+
+   bson_free ((char*)name);
+   bson_free ((char*)architecture);
+   bson_free ((char*)version);
 }

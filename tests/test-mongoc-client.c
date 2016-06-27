@@ -1692,6 +1692,178 @@ test_ssl_reconnect_pooled (void)
 
 #endif
 
+static void
+test_mongoc_client_metadata ()
+{
+
+   enum {BUFFER_SIZE = METADATA_MAX_SIZE};
+   char big_string[BUFFER_SIZE];
+   const char* short_string = "hallo thar";
+   mongoc_client_t *client;
+   mongoc_client_t *client2;
+   char *str = NULL;
+   int space_left;
+   int before_size;
+   bson_t* metadata;
+
+   memset (big_string, 'a', BUFFER_SIZE -1);
+   big_string[BUFFER_SIZE - 1] = '\0';
+
+   client = test_framework_client_new ();
+   ASSERT (client);
+
+   metadata = &client->topology->scanner->ismaster_metadata;
+
+   /* TODO: Remove this */
+   str = bson_as_json (metadata, NULL);
+   fprintf (stderr, "\n\n\n%s\nLEN %d\n\n", str, metadata->len);
+   bson_free (str);
+
+   before_size = metadata->len;
+   /* Check that setting too long a name causes failure */
+   ASSERT (!mongoc_client_set_application (client, big_string));
+   /* Nothing changed */
+   ASSERT (metadata->len == before_size);
+
+   /* Check that setting a name which appears to be small enough to fit
+      but actually won't doesn't cause a problem */
+   space_left = METADATA_MAX_SIZE - metadata->len;
+   ASSERT (space_left > 0);
+
+   /* Make a string exactly this size and try to insert it.
+      Should still fail since there is overhead associated with the string */
+   big_string[space_left - 1] = '\0';
+   ASSERT (strlen (big_string) + 1 == space_left);
+   before_size = metadata->len;
+   ASSERT (!mongoc_client_set_application (client, big_string));
+   ASSERT (before_size == metadata->len);
+
+   /* Success case */
+   ASSERT (mongoc_client_set_application (client, short_string));
+
+   /* Make sure we can't set it twice */
+   ASSERT (!mongoc_client_set_application (client, "a"));
+
+   /* TODO: remove this*/
+   str = bson_as_json (metadata, NULL);
+   fprintf (stderr, "\n\nMETADATA:\n%s\nLEN: %d\n\n", str,
+            metadata->len);
+   bson_free (str);
+
+   /* --set_metadata function-- */
+
+   /* We can only call this function once per client */
+   client2 = test_framework_client_new ();
+   ASSERT (client2);
+   /* try set_metadata with some null strings */
+   ASSERT (mongoc_client_set_metadata (client2, NULL,
+                                       NULL, "platform abc"));
+   mongoc_client_destroy (client2);
+
+   /* Try with some strings which are too long */
+   before_size = metadata->len;
+   ASSERT (!mongoc_client_set_metadata (client,
+                                        big_string,
+                                        big_string,
+                                        big_string));
+   ASSERT (metadata->len == before_size);
+
+   /* Try the set_metadata function with reasonable values */
+   ASSERT (mongoc_client_set_metadata (client, "Driver name",
+                                       "Driver version 123",
+                                       "platform abc"));
+
+   /* make sure it can't be set twice */
+   ASSERT (!mongoc_client_set_metadata (client, "a", "a", "a"));
+
+   /* TODO: Remove this */
+   str = bson_as_json (metadata, NULL);
+   fprintf (stderr, "\n\n\n%s\n\n\n", str);
+   bson_free (str);
+
+   mongoc_client_destroy (client);
+}
+
+static void
+test_client_sends_metadata () {
+   mock_server_t *server;
+   mongoc_uri_t *uri;
+   mongoc_client_t *client;
+   future_t *future;
+   request_t *request;
+   const char * const server_reply = "{'ok': 1, 'ismaster': true}";
+   const bson_t* request_doc;
+   bson_error_t error;
+   mongoc_server_description_t* sd;
+
+   server = mock_server_new ();
+   mock_server_run (server);
+   uri = mongoc_uri_copy (mock_server_get_uri (server));
+   mongoc_uri_set_option_as_int32 (uri, "heartbeatFrequencyMS", 500);
+   client = mongoc_client_new_from_uri (uri);
+
+   future = future_client_command_simple (client,
+                                          "admin",
+                                          tmp_bson ("{'ping': 1}"),
+                                          NULL,
+                                          NULL,
+                                          &error);
+   request = mock_server_receives_ismaster (server);
+
+   /* TODO: Check isMaster still has metadata field if server hangs
+      up first time */
+
+   /* Make sure the isMaster request has a "meta" field: */
+   ASSERT (request);
+   request_doc = request_get_doc (request, 0);
+   ASSERT (request_doc);
+   ASSERT (bson_has_field (request_doc, "isMaster"));
+   ASSERT (bson_has_field (request_doc, METADATA_FIELD));
+
+   /* Make sure the ping command succeeds */
+   mock_server_replies_simple (request, server_reply);
+   request_destroy (request);
+
+   request = mock_server_receives_command (server, "admin",
+                                           MONGOC_QUERY_SLAVE_OK,
+                                           "{'ping': 1}");
+   mock_server_replies_ok_and_destroys (request);
+   assert (future_get_bool (future));
+   future_destroy (future);
+
+   /* Wait for the isMaster cooldown to end. Then call topology_select
+      which will run isMaster again. This time we want to be sure isMaster
+      does NOT contain the metadata field
+    */
+
+   /* Wait for 2 heartbeats. By the time this is done
+      the cooldown will be over*/
+   _mongoc_usleep (500 * 2 * 1000);
+
+   future = future_topology_select (client->topology, MONGOC_SS_READ,
+                                    NULL, &error);
+   request = mock_server_receives_ismaster (server);
+   ASSERT (request);
+   request_doc = request_get_doc (request, 0);
+   ASSERT (request_doc);
+   ASSERT (bson_has_field (request_doc, "isMaster"));
+   ASSERT (!bson_has_field (request_doc, METADATA_FIELD));
+
+   mock_server_replies_simple (request, server_reply);
+
+   sd = future_get_mongoc_server_description_ptr (future);
+   ASSERT (sd);
+
+   /* cleanup */
+   mongoc_server_description_destroy (sd);
+   request_destroy (request);
+   future_destroy (future);
+
+   mongoc_client_destroy (client);
+   mongoc_uri_destroy (uri);
+   mock_server_destroy (server);
+}
+
 
 void
 test_client_install (TestSuite *suite)
@@ -1739,6 +1911,8 @@ test_client_install (TestSuite *suite)
    TestSuite_Add (suite, "/Client/database_names", test_get_database_names);
    TestSuite_AddFull (suite, "/Client/connect/uds", test_mongoc_client_unix_domain_socket, NULL, NULL, test_framework_skip_if_no_uds);
    TestSuite_Add (suite, "/Client/mismatched_me", test_mongoc_client_mismatched_me);
+   TestSuite_Add (suite, "/Client/set_metadata", test_mongoc_client_metadata);
+   TestSuite_Add (suite, "/Client/sends_metadata", test_client_sends_metadata);
 
 #ifdef TODO_CDRIVER_689
    TestSuite_Add (suite, "/Client/wire_version", test_wire_version);

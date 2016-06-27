@@ -40,13 +40,17 @@ struct _mongoc_client_pool_t
    uint32_t                min_pool_size;
    uint32_t                max_pool_size;
    uint32_t                size;
+   bool                    topology_scanner_started;
 #ifdef MONGOC_ENABLE_SSL
    bool                    ssl_opts_set;
    mongoc_ssl_opt_t        ssl_opts;
 #endif
    mongoc_apm_callbacks_t  apm_callbacks;
    void                   *apm_context;
+
    int32_t                 error_api_version;
+
+   bool                    metadata_set;
 };
 
 
@@ -103,9 +107,13 @@ mongoc_client_pool_new (const mongoc_uri_t *uri)
    pool->min_pool_size = 0;
    pool->max_pool_size = 100;
    pool->size = 0;
+   pool->topology_scanner_started = false;
 
    topology = mongoc_topology_new(uri, false);
    pool->topology = topology;
+
+   mongoc_client_metadata_init (&pool->topology->scanner->ismaster_metadata);
+
    pool->error_api_version = MONGOC_ERROR_API_VERSION_LEGACY;
 
    b = mongoc_uri_get_options(pool->uri);
@@ -159,6 +167,20 @@ mongoc_client_pool_destroy (mongoc_client_pool_t *pool)
    EXIT;
 }
 
+static void
+start_scanner_if_needed (mongoc_client_pool_t *pool) {
+   bool r;
+
+   if (!pool->topology_scanner_started) {
+      r = mongoc_topology_start_background_scanner (pool->topology);
+
+      if (r) {
+         pool->topology_scanner_started = true;
+      } else {
+         MONGOC_ERROR ("Background scanner did not start!");
+      }
+   }
+}
 
 mongoc_client_t *
 mongoc_client_pool_pop (mongoc_client_pool_t *pool)
@@ -191,6 +213,7 @@ again:
       }
    }
 
+   start_scanner_if_needed (pool);
    mongoc_mutex_unlock(&pool->mutex);
 
    RETURN(client);
@@ -220,6 +243,9 @@ mongoc_client_pool_try_pop (mongoc_client_pool_t *pool)
       }
    }
 
+   if (client) {
+      start_scanner_if_needed (pool);
+   }
    mongoc_mutex_unlock(&pool->mutex);
 
    RETURN(client);
@@ -293,6 +319,20 @@ mongoc_client_pool_min_size(mongoc_client_pool_t *pool,
    EXIT;
 }
 
+void
+mongoc_client_pool_get_metadata (mongoc_client_pool_t *pool,
+                                 bson_t *buf) {
+   ENTRY;
+
+   BSON_ASSERT (buf);
+
+   mongoc_mutex_lock (&pool->mutex);
+   bson_copy_to (&pool->topology->scanner->ismaster_metadata, buf);
+   mongoc_mutex_unlock (&pool->mutex);
+
+   EXIT;
+}
+
 bool
 mongoc_client_pool_set_apm_callbacks (mongoc_client_pool_t   *pool,
                                       mongoc_apm_callbacks_t *callbacks,
@@ -329,4 +369,66 @@ mongoc_client_pool_set_error_api (mongoc_client_pool_t *pool,
    pool->error_api_version = version;
 
    return true;
+}
+
+bool
+mongoc_client_pool_set_application (mongoc_client_pool_t   *pool,
+                                    const char             *application_name)
+{
+   bool ret;
+   bson_t* metadata;
+   /* Locking mutex even though this function can only get called once because
+      we don't want to write to the metadata bson_t if someone else is reading
+      from it at the same time */
+   mongoc_mutex_lock (&pool->mutex);
+
+   if (mongoc_topology_is_scanner_active (pool->topology)) {
+      /* Once the scanner is active we cannot tell it to send
+         different metadata */
+      ret = false;
+      goto done;
+   }
+
+   metadata = &pool->topology->scanner->ismaster_metadata;
+   ret = mongoc_client_metadata_set_application (metadata, application_name);
+done:
+   mongoc_mutex_unlock (&pool->mutex);
+
+   return ret;
+}
+
+bool
+mongoc_client_pool_set_metadata (mongoc_client_pool_t   *pool,
+                                 const char             *driver_name,
+                                 const char             *version,
+                                 const char             *platform)
+{
+   bool ret = false;
+   bson_t* metadata;
+
+   mongoc_mutex_lock (&pool->mutex);
+
+   if (pool->metadata_set) {
+      goto done;
+   }
+
+   if (mongoc_topology_is_scanner_active (pool->topology)) {
+      /* Once the scanner is active we cannot tell it to send
+         different metadata */
+      goto done;
+   }
+
+   metadata = &pool->topology->scanner->ismaster_metadata;
+   ret = mongoc_client_metadata_set_data (metadata,
+                                          driver_name,
+                                          version,
+                                          platform);
+
+   if (ret) {
+      pool->metadata_set = true;
+   }
+done:
+   mongoc_mutex_unlock (&pool->mutex);
+
+   return ret;
 }
