@@ -24,7 +24,8 @@
 # include <windows.h>
 # include <stdio.h>
 
-/* TODO: I feel uncomfortable doing this. */
+#include <VersionHelpers.h>
+
 # pragma comment(lib, "version.lib")
 # pragma comment(lib, "user32.lib")
 
@@ -2229,6 +2230,38 @@ done:
    return ver_str;
 }
 
+static char*
+windows_get_version_string_2 () {
+   /*
+      As new versions of windows are released, we'll have to add to this
+      See:
+      https://msdn.microsoft.com/en-us/library/windows/desktop/ms724832(v=vs.85).aspx
+      For windows names -> version # mapping
+   */
+
+   if (IsWindowsVersionOrGreater (10, 0, 0)) {
+      /* No IsWindows10OrGreater () function available with this version of
+         MSVC */
+      return bson_strdup (">= Windows 10");
+   } else if (IsWindowsVersionOrGreater (6, 3, 0)) {
+      /* No IsWindows8Point10OrGreater() function available with this version
+         of MSVC */
+      return bson_strdup ("Windows 8.1");
+   } else if (IsWindows8OrGreater ()) {
+      return bson_strdup ("Windows 8");
+   } else if (IsWindows7SP1OrGreater ()) {
+      return bson_strdup ("Windows 7.1");
+   } else if (IsWindows7OrGreater ()) {
+      return bson_strdup ("Windows 7");
+   } else if (IsWindowsVistaOrGreater ()) {
+      return bson_strdup ("Windows Vista");
+   } else if (IsWindowsXPOrGreater ()) {
+      return bson_strdup ("Windows XP");
+   }
+
+   return bson_strdup ("Pre Windows XP");
+}
+
 static char* windows_get_arch_string ()
 {
    SYSTEM_INFO sysinfo;
@@ -2265,7 +2298,7 @@ static void get_system_info (const char** name, const char** architecture,
    }
 
    if (version) {
-      result_str = windows_get_version_string ();
+      result_str = windows_get_version_string_2 ();
 
       if (result_str) {
          *version = result_str;
