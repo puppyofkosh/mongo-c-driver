@@ -2124,7 +2124,6 @@ bool mongoc_client_set_metadata (mongoc_client_t              *client,
    }
 
    metadata = &client->topology->scanner->ismaster_metadata;
-   /* TODO: Do a check to see if this has already been called */
 
    /* Make a copy of the metadata with the "new" strings. If it ends up
       being too big, then we just keep the original copy */
@@ -2154,7 +2153,6 @@ static void get_system_info (const char** name, const char** architecture,
    }
 
    if (name) {
-      /* TODO: copy these strings */
       *name = bson_strdup (sysinfo.sysname);
    }
 

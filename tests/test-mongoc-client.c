@@ -1701,8 +1701,6 @@ test_mongoc_client_metadata ()
    const char* short_string = "hallo thar";
    mongoc_client_t *client;
    mongoc_client_t *client2;
-   char *str = NULL;
-   int space_left;
    int before_size;
    bson_t* metadata;
 
@@ -1714,29 +1712,11 @@ test_mongoc_client_metadata ()
 
    metadata = &client->topology->scanner->ismaster_metadata;
 
-   /* TODO: Remove this */
-   str = bson_as_json (metadata, NULL);
-   fprintf (stderr, "\n\n\n%s\nLEN %d\n\n", str, metadata->len);
-   bson_free (str);
-
    before_size = metadata->len;
    /* Check that setting too long a name causes failure */
    ASSERT (!mongoc_client_set_application (client, big_string));
    /* Nothing changed */
    ASSERT (metadata->len == before_size);
-
-   /* Check that setting a name which appears to be small enough to fit
-      but actually won't doesn't cause a problem */
-   space_left = METADATA_MAX_SIZE - metadata->len;
-   ASSERT (space_left > 0);
-
-   /* Make a string exactly this size and try to insert it.
-      Should still fail since there is overhead associated with the string */
-   big_string[space_left - 1] = '\0';
-   ASSERT (strlen (big_string) + 1 == space_left);
-   before_size = metadata->len;
-   ASSERT (!mongoc_client_set_application (client, big_string));
-   ASSERT (before_size == metadata->len);
 
    /* Success case */
    ASSERT (mongoc_client_set_application (client, short_string));
@@ -1744,13 +1724,8 @@ test_mongoc_client_metadata ()
    /* Make sure we can't set it twice */
    ASSERT (!mongoc_client_set_application (client, "a"));
 
-   /* TODO: remove this*/
-   str = bson_as_json (metadata, NULL);
-   fprintf (stderr, "\n\nMETADATA:\n%s\nLEN: %d\n\n", str,
-            metadata->len);
-   bson_free (str);
 
-   /* --set_metadata function-- */
+   /* set_metadata function */
 
    /* We can only call this function once per client */
    client2 = test_framework_client_new ();
@@ -1764,8 +1739,8 @@ test_mongoc_client_metadata ()
    before_size = metadata->len;
    ASSERT (!mongoc_client_set_metadata (client,
                                         big_string,
-                                        big_string,
-                                        big_string));
+                                        NULL,
+                                        NULL));
    ASSERT (metadata->len == before_size);
 
    /* Try the set_metadata function with reasonable values */
@@ -1775,11 +1750,6 @@ test_mongoc_client_metadata ()
 
    /* make sure it can't be set twice */
    ASSERT (!mongoc_client_set_metadata (client, "a", "a", "a"));
-
-   /* TODO: Remove this */
-   str = bson_as_json (metadata, NULL);
-   fprintf (stderr, "\n\n\n%s\n\n\n", str);
-   bson_free (str);
 
    mongoc_client_destroy (client);
 }
@@ -1795,11 +1765,12 @@ test_client_sends_metadata () {
    const bson_t* request_doc;
    bson_error_t error;
    mongoc_server_description_t* sd;
+   const int heartbeat_ms = 500;
 
    server = mock_server_new ();
    mock_server_run (server);
    uri = mongoc_uri_copy (mock_server_get_uri (server));
-   mongoc_uri_set_option_as_int32 (uri, "heartbeatFrequencyMS", 500);
+   mongoc_uri_set_option_as_int32 (uri, "heartbeatFrequencyMS", heartbeat_ms);
    client = mongoc_client_new_from_uri (uri);
 
    future = future_client_command_simple (client,
@@ -1809,9 +1780,6 @@ test_client_sends_metadata () {
                                           NULL,
                                           &error);
    request = mock_server_receives_ismaster (server);
-
-   /* TODO: Check isMaster still has metadata field if server hangs
-      up first time */
 
    /* Make sure the isMaster request has a "meta" field: */
    ASSERT (request);
@@ -1833,12 +1801,11 @@ test_client_sends_metadata () {
 
    /* Wait for the isMaster cooldown to end. Then call topology_select
       which will run isMaster again. This time we want to be sure isMaster
-      does NOT contain the metadata field
-    */
+      does NOT contain the metadata field */
 
    /* Wait for 2 heartbeats. By the time this is done
-      the cooldown will be over*/
-   _mongoc_usleep (500 * 2 * 1000);
+      the cooldown will be over */
+   _mongoc_usleep (heartbeat_ms * 2 * 1000);
 
    future = future_topology_select (client->topology, MONGOC_SS_READ,
                                     NULL, &error);
