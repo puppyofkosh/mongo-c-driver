@@ -42,7 +42,7 @@ mongoc_topology_scanner_ismaster_handler (mongoc_async_cmd_result_t async_status
                                           void                     *data,
                                           bson_error_t             *error);
 
-static inline void init_ismaster (bson_t* cmd) {
+static void init_ismaster (bson_t* cmd) {
    bson_init (cmd);
    BSON_APPEND_INT32 (cmd, "isMaster", 1);
 }
