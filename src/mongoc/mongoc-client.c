@@ -2166,72 +2166,9 @@ static void get_system_info (const char** name, const char** architecture,
    }
 }
 #else
-static char* windows_get_version_string ()
-{
-   const char* kernel32 = "\\kernel32.dll";
-   char *path = NULL;
-   void *ver = NULL;
-   void *block;
-   char* ver_str = NULL;
-   bool r;
-   UINT n;
-   DWORD versz, blocksz;
-   VS_FIXEDFILEINFO *vinfo;
-
-   /* Following instructions from
-      https://msdn.microsoft.com/en-us/library/windows/desktop/ms724429(v=vs.85).aspx
-
-      and following general idea of python's sys.getwindowsversion()
-    */
-   /* MAX_PATH is provided by windows.h */
-   path = bson_malloc(MAX_PATH);
-   n = GetSystemDirectory(path, MAX_PATH);
-   if (n >= MAX_PATH || n == 0 ||
-       n > MAX_PATH - strlen (kernel32)) {
-      goto done;
-   }
-
-   r = strcat_s (path, MAX_PATH, kernel32);
-   if (r) {
-      goto done;
-   }
-   versz = GetFileVersionInfoSize(path, NULL);
-
-   if (versz == 0) {
-      goto done;
-   }
-
-   ver = bson_malloc(versz);
-   r = GetFileVersionInfo(path, 0, versz, ver);
-   if (!r) {
-      goto done;
-   }
-
-   r = VerQueryValue(ver, "\\", &block, &blocksz);
-   if (!r) {
-      goto done;
-   }
-   vinfo = (VS_FIXEDFILEINFO *) block;
-
-   ver_str = bson_strdup_printf ("%d.%d.%d",
-                                 (int) HIWORD(vinfo->dwProductVersionMS),
-                                 (int) LOWORD(vinfo->dwProductVersionMS),
-                                 (int) HIWORD(vinfo->dwProductVersionLS));
-
-done:
-   if (!ver_str) {
-      MONGOC_ERROR ("Getting windows version failed with error %d",
-                    GetLastError());
-   }
-
-   bson_free(path);
-   bson_free(ver);
-
-   return ver_str;
-}
-
 static char*
-windows_get_version_string_2 () {
+windows_get_version_string ()
+{
    /*
       As new versions of windows are released, we'll have to add to this
       See:
@@ -2298,7 +2235,7 @@ static void get_system_info (const char** name, const char** architecture,
    }
 
    if (version) {
-      result_str = windows_get_version_string_2 ();
+      result_str = windows_get_version_string ();
 
       if (result_str) {
          *version = result_str;
