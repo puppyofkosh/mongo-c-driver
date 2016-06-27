@@ -24,9 +24,6 @@ static void
 _mongoc_topology_background_thread_stop (mongoc_topology_t *topology);
 
 static void
-_mongoc_topology_background_thread_start (mongoc_topology_t *topology);
-
-static void
 _mongoc_topology_request_scan (mongoc_topology_t *topology);
 
 static bool
@@ -235,10 +232,6 @@ mongoc_topology_new (const mongoc_uri_t *uri,
       mongoc_topology_scanner_add (topology->scanner, hl, id);
    }
 
-   if (! topology->single_threaded) {
-       _mongoc_topology_background_thread_start (topology);
-   }
-
    return topology;
 }
 
@@ -329,6 +322,8 @@ _mongoc_topology_do_blocking_scan (mongoc_topology_t *topology,
                                    bson_error_t      *error)
 {
    mongoc_topology_scanner_t *scanner;
+
+   topology->scanner_active = true;
 
    scanner = topology->scanner;
    mongoc_topology_scanner_start (scanner,
@@ -741,6 +736,19 @@ mongoc_topology_server_timestamp (mongoc_topology_t *topology,
    return timestamp;
 }
 
+
+bool
+mongoc_topology_is_scanner_active (mongoc_topology_t* topology) {
+   bool ret;
+
+   /* Technically scanner_active is only accessed by one thread so we shouldn't
+      need to lock this mutex, but it feels a little safer to do it anyway */
+   mongoc_mutex_lock (&topology->mutex);
+   ret = topology->scanner_active;
+   mongoc_mutex_unlock (&topology->mutex);
+   return ret;
+}
+
 /*
  *--------------------------------------------------------------------------
  *
@@ -850,7 +858,7 @@ DONE:
 /*
  *--------------------------------------------------------------------------
  *
- * mongoc_topology_background_thread_start --
+ * mongoc_topology_start_background_scanner
  *
  *       Start the topology background thread running. This should only be
  *       called once per pool. If clients are created separately (not
@@ -862,13 +870,13 @@ DONE:
  *--------------------------------------------------------------------------
  */
 
-static void
-_mongoc_topology_background_thread_start (mongoc_topology_t *topology)
+bool
+mongoc_topology_start_background_scanner (mongoc_topology_t *topology)
 {
    bool launch_thread = true;
 
    if (topology->single_threaded) {
-      return;
+      return false;
    }
 
    mongoc_mutex_lock (&topology->mutex);
@@ -877,9 +885,12 @@ _mongoc_topology_background_thread_start (mongoc_topology_t *topology)
    mongoc_mutex_unlock (&topology->mutex);
 
    if (launch_thread) {
+      topology->scanner_active = true;
       mongoc_thread_create (&topology->thread, _mongoc_topology_run_background,
                             topology);
    }
+
+   return launch_thread;
 }
 
 /*

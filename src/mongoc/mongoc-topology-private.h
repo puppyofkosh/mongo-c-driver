@@ -57,6 +57,7 @@ typedef struct _mongoc_topology_t
    mongoc_thread_t               thread;
 
    mongoc_topology_bg_state_t    bg_thread_state;
+   bool                          scanner_active;
    bool                          scan_requested;
    bool                          scanning;
    bool                          got_ismaster;
@@ -101,4 +102,6 @@ int64_t
 mongoc_topology_server_timestamp (mongoc_topology_t *topology,
                                   uint32_t           id);
 
+bool mongoc_topology_start_background_scanner (mongoc_topology_t* topology);
+bool mongoc_topology_is_scanner_active (mongoc_topology_t* topology);
 #endif

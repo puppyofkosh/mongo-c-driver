@@ -40,6 +40,7 @@ struct _mongoc_client_pool_t
    uint32_t                min_pool_size;
    uint32_t                max_pool_size;
    uint32_t                size;
+   bool                    topology_scanner_started;
 #ifdef MONGOC_ENABLE_SSL
    bool                    ssl_opts_set;
    mongoc_ssl_opt_t        ssl_opts;
@@ -103,9 +104,11 @@ mongoc_client_pool_new (const mongoc_uri_t *uri)
    pool->min_pool_size = 0;
    pool->max_pool_size = 100;
    pool->size = 0;
+   pool->topology_scanner_started = false;
 
    topology = mongoc_topology_new(uri, false);
    pool->topology = topology;
+
    pool->error_api_version = MONGOC_ERROR_API_VERSION_LEGACY;
 
    b = mongoc_uri_get_options(pool->uri);
@@ -159,6 +162,20 @@ mongoc_client_pool_destroy (mongoc_client_pool_t *pool)
    EXIT;
 }
 
+static void
+start_scanner_if_needed (mongoc_client_pool_t *pool) {
+   bool r;
+
+   if (!pool->topology_scanner_started) {
+      r = mongoc_topology_start_background_scanner (pool->topology);
+
+      if (r) {
+         pool->topology_scanner_started = true;
+      } else {
+         MONGOC_ERROR ("Background scanner did not start!");
+      }
+   }
+}
 
 mongoc_client_t *
 mongoc_client_pool_pop (mongoc_client_pool_t *pool)
@@ -191,6 +208,7 @@ again:
       }
    }
 
+   start_scanner_if_needed (pool);
    mongoc_mutex_unlock(&pool->mutex);
 
    RETURN(client);
@@ -220,6 +238,9 @@ mongoc_client_pool_try_pop (mongoc_client_pool_t *pool)
       }
    }
 
+   if (client) {
+      start_scanner_if_needed (pool);
+   }
    mongoc_mutex_unlock(&pool->mutex);
 
    RETURN(client);
