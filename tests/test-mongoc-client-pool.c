@@ -210,6 +210,18 @@ test_mongoc_client_pool_ssl_disabled (void)
 }
 #endif
 
+static uint32_t get_metadata_len (mongoc_client_pool_t* pool)
+{
+   bson_t metadata;
+   uint32_t ret;
+
+   mongoc_client_pool_get_metadata (pool, &metadata);
+   ret = metadata.len;
+   bson_destroy (&metadata);
+
+   return ret;
+}
+
 static void
 test_mongoc_client_pool_metadata ()
 {
@@ -217,7 +229,6 @@ test_mongoc_client_pool_metadata ()
    mongoc_client_t* client;
    mongoc_uri_t *uri;
    uint32_t before_size;
-   bson_t metadata;
 
    uri = mongoc_uri_new("mongodb://127.0.0.1?maxpoolsize=1&minpoolsize=1");
    pool = mongoc_client_pool_new(uri);
@@ -225,6 +236,7 @@ test_mongoc_client_pool_metadata ()
 
    ASSERT (mongoc_client_pool_set_application (pool, "some application"));
    /* Be sure we can't set it twice */
+   before_size = get_metadata_len (pool);
    ASSERT (!mongoc_client_pool_set_application (pool, "a"));
 
    ASSERT (mongoc_client_pool_set_metadata (pool, "php driver", "version abc",
@@ -241,15 +253,11 @@ test_mongoc_client_pool_metadata ()
    client = mongoc_client_pool_pop (pool);
 
    /* Be sure a client can't set it now that we've popped them */
-   mongoc_client_pool_get_metadata (pool, &metadata);
-   before_size = metadata.len;
-   bson_destroy (&metadata);
+   before_size = get_metadata_len (pool);
    ASSERT (!mongoc_client_set_application (client, "a"));
    ASSERT (!mongoc_client_pool_set_metadata (pool, "a", "a", "a"));
 
-   mongoc_client_pool_get_metadata (pool, &metadata);
-   ASSERT (before_size == metadata.len);
-   bson_destroy (&metadata);
+   ASSERT (before_size == get_metadata_len (pool));
 
    mongoc_client_pool_push (pool, client);
 

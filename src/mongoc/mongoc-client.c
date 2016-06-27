@@ -21,6 +21,8 @@
 # include <netinet/tcp.h>
 # include <sys/utsname.h>
 #else
+# include <windows.h>
+# include <stdio.h>
 # include <VersionHelpers.h>
 #endif
 
@@ -2119,8 +2121,6 @@ bool mongoc_client_set_metadata (mongoc_client_t              *client,
 
    metadata = &client->topology->scanner->ismaster_metadata;
 
-   /* Make a copy of the metadata with the "new" strings. If it ends up
-      being too big, then we just keep the original copy */
    ret = mongoc_client_metadata_set_data (metadata,
                                           driver_name,
                                           version,
@@ -2136,10 +2136,10 @@ bool mongoc_client_set_metadata (mongoc_client_t              *client,
 static void get_system_info (const char** name, const char** architecture,
                              const char** version)
 {
-   struct utsname sysinfo;
+   struct utsname system_info;
    int res;
 
-   res = uname (&sysinfo);
+   res = uname (&system_info);
 
    if (res != 0) {
       MONGOC_ERROR ("Uname failed with error %d", errno);
@@ -2147,15 +2147,15 @@ static void get_system_info (const char** name, const char** architecture,
    }
 
    if (name) {
-      *name = bson_strdup (sysinfo.sysname);
+      *name = bson_strdup (system_info.sysname);
    }
 
    if (architecture) {
-      *architecture = bson_strdup (sysinfo.machine);
+      *architecture = bson_strdup (system_info.machine);
    }
 
    if (version) {
-      *version = bson_strdup (sysinfo.release);
+      *version = bson_strdup (system_info.release);
    }
 }
 #else
@@ -2194,13 +2194,13 @@ windows_get_version_string ()
 
 static char* windows_get_arch_string ()
 {
-   SYSTEM_INFO sysinfo;
+   SYSTEM_INFO system_info;
    DWORD arch;
 
    /* doesn't return anything */
-   GetSystemInfo(&sysinfo);
+   GetSystemInfo(&system_info);
 
-   arch = sysinfo.wProcessorArchitecture;
+   arch = system_info.wProcessorArchitecture;
    if (arch == PROCESSOR_ARCHITECTURE_AMD64) {
       return bson_strdup ("x86_64");
    } else if (arch == PROCESSOR_ARCHITECTURE_ARM) {
@@ -2271,9 +2271,9 @@ void mongoc_client_metadata_init (bson_t* metadata)
 
                 "platform",
                 "CC=" MONGOC_CC " "
+                /* Not including CFLAGS because its pretty big and can be
+                   determined from configure's args anyway */
                 /* "CLFAGS=" MONGOC_CFLAGS " " */
-                /* Not including this because its too big and is reflected in
-                   configure_args */
                 "./configure " MONGOC_CONFIGURE_ARGS);
 
    bson_free ((char*)name);

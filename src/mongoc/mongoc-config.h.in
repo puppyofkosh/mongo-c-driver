@@ -18,8 +18,6 @@
 #ifndef MONGOC_CONFIG_H
 #define MONGOC_CONFIG_H
 
-/* basic idea */
-
 /* MONGOC_CFLAGS is set from config based on what compiler flags were used
    to compile mongoc */
 #define MONGOC_CFLAGS "@MONGOC_CFLAGS@"

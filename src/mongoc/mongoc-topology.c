@@ -115,9 +115,9 @@ _mongoc_topology_scanner_cb (uint32_t      id,
 
       mongoc_topology_reconcile(topology);
 
-      /*
-        In future calls to mongoc_topology_scanner_start we won't pass any
-        additional metadata */
+      /* In future calls to mongoc_topology_scanner_start we won't pass any
+         additional metadata. We set this flag here, because we only want to
+         disable sending metadata once we've succeeded in connecting */
       topology->ismaster_metadata_sent = true;
 
       /* TODO only wake up all clients if we found any topology changes */
@@ -750,7 +750,7 @@ mongoc_topology_is_scanner_active (mongoc_topology_t* topology) {
    bool ret;
 
    /* Technically scanner_active is only accessed by one thread so we shouldn't
-      need to lock this mutex, but it feels a little safer */
+      need to lock this mutex, but it feels a little safer to do it anyway */
    mongoc_mutex_lock (&topology->mutex);
    ret = topology->scanner_active;
    mongoc_mutex_unlock (&topology->mutex);

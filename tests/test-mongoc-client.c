@@ -1788,15 +1788,15 @@ test_client_sends_metadata () {
    ASSERT (bson_has_field (request_doc, "isMaster"));
    ASSERT (bson_has_field (request_doc, METADATA_FIELD));
 
-   /* Make sure the ping command succeeds */
    mock_server_replies_simple (request, server_reply);
    request_destroy (request);
 
+   /* Make sure the ping command succeeds */
    request = mock_server_receives_command (server, "admin",
                                            MONGOC_QUERY_SLAVE_OK,
                                            "{'ping': 1}");
    mock_server_replies_ok_and_destroys (request);
-   assert (future_get_bool (future));
+   ASSERT (future_get_bool (future));
    future_destroy (future);
 
    /* Wait for the isMaster cooldown to end. Then call topology_select

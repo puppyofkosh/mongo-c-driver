@@ -556,13 +556,16 @@ mongoc_topology_scanner_start (mongoc_topology_scanner_t *ts,
 
    if (include_metadata) {
       /* Make a new document which includes both isMaster and the metadata
-         and we'll send that */
+         and we'll send that. We rebuild the document each time (rather
+         than storing it in the struct), since chances are this code will
+         only execute once */
       init_ismaster (&ismaster_cmd_with_metadata);
       BSON_APPEND_DOCUMENT (&ismaster_cmd_with_metadata,
                             METADATA_FIELD,
                             &ts->ismaster_metadata);
       ismaster_cmd_to_send = &ismaster_cmd_with_metadata;
    } else {
+      /* Use our default isMaster command: {isMaster: 1} */
       ismaster_cmd_to_send = &ts->ismaster_cmd;
    }
 
