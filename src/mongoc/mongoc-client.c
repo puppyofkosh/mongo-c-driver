@@ -21,14 +21,7 @@
 # include <netinet/tcp.h>
 # include <sys/utsname.h>
 #else
-# include <windows.h>
-# include <stdio.h>
-
-#include <VersionHelpers.h>
-
-# pragma comment(lib, "version.lib")
-# pragma comment(lib, "user32.lib")
-
+# include <VersionHelpers.h>
 #endif
 
 
