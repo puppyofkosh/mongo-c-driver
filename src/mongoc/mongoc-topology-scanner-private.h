@@ -69,6 +69,7 @@ typedef struct mongoc_topology_scanner
    mongoc_topology_scanner_node_t *nodes;
    uint32_t                        seq;
    bson_t                          ismaster_cmd;
+   bson_t                          ismaster_metadata;
    mongoc_topology_scanner_cb_t    cb;
    void                           *cb_data;
    bool                            in_progress;
@@ -116,7 +117,8 @@ mongoc_topology_scanner_node_destroy (mongoc_topology_scanner_node_t *node,
 void
 mongoc_topology_scanner_start (mongoc_topology_scanner_t *ts,
                                int32_t timeout_msec,
-                               bool obey_cooldown);
+                               bool obey_cooldown,
+                               bool include_metadata);
 
 bool
 mongoc_topology_scanner_work (mongoc_topology_scanner_t *ts,
@@ -145,7 +147,6 @@ void
 mongoc_topology_scanner_set_stream_initiator (mongoc_topology_scanner_t *ts,
                                               mongoc_stream_initiator_t  si,
                                               void                      *ctx);
-
 #ifdef MONGOC_ENABLE_SSL
 void
 mongoc_topology_scanner_set_ssl_opts (mongoc_topology_scanner_t *ts,

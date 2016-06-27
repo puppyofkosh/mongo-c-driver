@@ -14,6 +14,11 @@ AC_SUBST(ACLOCAL_AMFLAGS, "-I build/autotools")
 MONGOC_API_VERSION=1.0
 AC_SUBST(MONGOC_API_VERSION)
 
+MONGOC_CONFIGURE_ARGS="$ac_configure_args"
+AC_SUBST(MONGOC_CONFIGURE_ARGS)
+
+
+
 m4_include([build/autotools/CheckCompiler.m4])
 m4_include([build/autotools/CheckProgs.m4])
 m4_include([build/autotools/CheckHost.m4])
@@ -35,6 +40,12 @@ m4_include([build/autotools/LDVersionScript.m4])
 m4_include([build/autotools/WeakSymbols.m4])
 m4_include([build/autotools/AutomaticInitAndCleanup.m4])
 
+AS_VAR_COPY(MONGOC_CC, [CC])
+AC_SUBST(MONGOC_CC)
+
+AS_VAR_COPY(MONGOC_CFLAGS, [CFLAGS])
+AC_SUBST(MONGOC_CFLAGS)
+
 # We would put AM_INIT_AUTOMAKE into SetupAutomake.m4, but seems to cause
 # autoconf errors.
 AM_INIT_AUTOMAKE([foreign subdir-objects tar-ustar])
@@ -55,3 +66,4 @@ AC_CONFIG_FILES([
 m4_include([build/autotools/Libbson.m4])
 
 m4_include([build/autotools/PrintBuildConfiguration.m4])
+
