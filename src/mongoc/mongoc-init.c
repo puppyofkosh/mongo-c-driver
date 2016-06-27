@@ -17,6 +17,7 @@
 
 #include <bson.h>
 
+#include "mongoc-metadata-private.h"
 #include "mongoc-config.h"
 #include "mongoc-counters-private.h"
 #include "mongoc-init.h"
@@ -120,6 +121,8 @@ static MONGOC_ONCE_FUN( _mongoc_do_init)
    }
 #endif
 
+   _mongoc_metadata_init ();
+
    MONGOC_ONCE_RETURN;
 }
 
@@ -150,6 +153,8 @@ static MONGOC_ONCE_FUN( _mongoc_do_cleanup)
 #endif
 
    _mongoc_counters_cleanup ();
+
+   _mongoc_metadata_cleanup ();
 
    MONGOC_ONCE_RETURN;
 }
