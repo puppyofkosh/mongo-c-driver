@@ -1956,12 +1956,12 @@ mongoc_client_metadata_set_application (bson_t               *metadata,
          document null terminator */
       1 + 4 + 1 +
       /* "application" field name */
-      (strlen (METADATA_APPLICATION_FIELD) + 1) +
+      ((uint32_t)strlen (METADATA_APPLICATION_FIELD) + 1) +
 
       /* 1 byte for utf8 identifier of "name" field */
       1 +
       /* key size */
-      (strlen (METADATA_APPLICATION_NAME_FIELD) + 1) +
+      ((uint32_t)strlen (METADATA_APPLICATION_NAME_FIELD) + 1) +
       /* 4 bytes for length of string (the actual application name) */
       4 +
       /* application name len */
@@ -1971,13 +1971,13 @@ mongoc_client_metadata_set_application (bson_t               *metadata,
       return false;
    }
 
-   bson_append_document_begin(metadata, METADATA_APPLICATION_FIELD,
+   bson_append_document_begin (metadata, METADATA_APPLICATION_FIELD,
                               -1, &application);
    bson_append_utf8 (&application,
                      METADATA_APPLICATION_NAME_FIELD,
                      -1,
                      application_name, application_name_len);
-   bson_append_document_end(metadata, &application);
+   bson_append_document_end (metadata, &application);
 
    /* Make sure our prediction was valid */
    BSON_ASSERT (metadata->len == predicted_bson_size);
