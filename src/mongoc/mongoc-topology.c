@@ -173,6 +173,7 @@ mongoc_topology_new (const mongoc_uri_t *uri,
    topology->description.set_name = bson_strdup(mongoc_uri_get_replica_set(uri));
 
    topology->uri = mongoc_uri_copy (uri);
+   topology->scanner_state = MONGOC_TOPOLOGY_SCANNER_OFF;
    topology->scanner = mongoc_topology_scanner_new (topology->uri,
                                                     _mongoc_topology_scanner_cb,
                                                     topology);
@@ -322,7 +323,7 @@ _mongoc_topology_do_blocking_scan (mongoc_topology_t *topology,
 {
    mongoc_topology_scanner_t *scanner;
 
-   topology->scanner_active = true;
+   topology->scanner_state = MONGOC_TOPOLOGY_SCANNER_SINGLE_THREADED;
 
    scanner = topology->scanner;
    mongoc_topology_scanner_start (scanner,
@@ -737,13 +738,11 @@ mongoc_topology_server_timestamp (mongoc_topology_t *topology,
 
 
 bool
-mongoc_topology_is_scanner_active (mongoc_topology_t* topology) {
+_mongoc_topology_is_scanner_active (mongoc_topology_t* topology) {
    bool ret;
 
-   /* Technically scanner_active is only accessed by one thread so we shouldn't
-      need to lock this mutex, but it feels a little safer to do it anyway */
    mongoc_mutex_lock (&topology->mutex);
-   ret = topology->scanner_active;
+   ret = topology->scanner_state != MONGOC_TOPOLOGY_SCANNER_OFF;
    mongoc_mutex_unlock (&topology->mutex);
    return ret;
 }
@@ -870,7 +869,7 @@ DONE:
  */
 
 bool
-mongoc_topology_start_background_scanner (mongoc_topology_t *topology)
+_mongoc_topology_start_background_scanner (mongoc_topology_t *topology)
 {
    bool launch_thread = true;
 
@@ -879,12 +878,14 @@ mongoc_topology_start_background_scanner (mongoc_topology_t *topology)
    }
 
    mongoc_mutex_lock (&topology->mutex);
-   if (topology->bg_thread_state != MONGOC_TOPOLOGY_BG_OFF) launch_thread = false;
-   topology->bg_thread_state = MONGOC_TOPOLOGY_BG_RUNNING;
+   if (topology->scanner_state != MONGOC_TOPOLOGY_SCANNER_OFF) {
+      launch_thread = false;
+   }
+
+   topology->scanner_state = MONGOC_TOPOLOGY_SCANNER_BG_RUNNING;
    mongoc_mutex_unlock (&topology->mutex);
 
    if (launch_thread) {
-      topology->scanner_active = true;
       mongoc_thread_create (&topology->thread, _mongoc_topology_run_background,
                             topology);
    }
@@ -915,16 +916,16 @@ _mongoc_topology_background_thread_stop (mongoc_topology_t *topology)
    }
 
    mongoc_mutex_lock (&topology->mutex);
-   if (topology->bg_thread_state == MONGOC_TOPOLOGY_BG_RUNNING) {
+   if (topology->scanner_state == MONGOC_TOPOLOGY_SCANNER_BG_RUNNING) {
       /* if the background thread is running, request a shutdown and signal the
        * thread */
       topology->shutdown_requested = true;
       mongoc_cond_signal (&topology->cond_server);
-      topology->bg_thread_state = MONGOC_TOPOLOGY_BG_SHUTTING_DOWN;
+      topology->scanner_state = MONGOC_TOPOLOGY_SCANNER_SHUTTING_DOWN;
       join_thread = true;
-   } else if (topology->bg_thread_state == MONGOC_TOPOLOGY_BG_SHUTTING_DOWN) {
+   } else if (topology->scanner_state == MONGOC_TOPOLOGY_SCANNER_SHUTTING_DOWN) {
       /* if we're mid shutdown, wait until it shuts down */
-      while (topology->bg_thread_state != MONGOC_TOPOLOGY_BG_OFF) {
+      while (topology->scanner_state != MONGOC_TOPOLOGY_SCANNER_OFF) {
          mongoc_cond_wait (&topology->cond_client, &topology->mutex);
       }
    } else {

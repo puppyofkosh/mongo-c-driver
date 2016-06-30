@@ -1906,7 +1906,7 @@ mongoc_client_set_application (mongoc_client_t              *client,
    bool res;
    bson_t* metadata;
 
-   if (mongoc_topology_is_scanner_active (client->topology)) {
+   if (_mongoc_topology_is_scanner_active (client->topology)) {
       /* Once the scanner has started we cannot change any of its data */
       return false;
    }
@@ -2110,7 +2110,7 @@ bool mongoc_client_set_metadata (mongoc_client_t              *client,
       return false;
    }
 
-   if (mongoc_topology_is_scanner_active (client->topology)) {
+   if (_mongoc_topology_is_scanner_active (client->topology)) {
       /* Once the scanner has started we cannot change any of its data */
       return false;
    }
