@@ -17,6 +17,7 @@
 #include <bson.h>
 #include <bson-string.h>
 
+#include "mongoc-client-metadata.h"
 #include "mongoc-client-private.h"
 #include "mongoc-error.h"
 #include "mongoc-trace.h"
@@ -24,22 +25,17 @@
 #include "mongoc-stream-socket.h"
 #include "mongoc-version.h"
 
+
 #ifdef MONGOC_ENABLE_SSL
 #include "mongoc-stream-tls.h"
 #endif
 
+#include "mongoc-client-metadata.h"
 #include "mongoc-counters-private.h"
 #include "utlist.h"
 #include "mongoc-topology-private.h"
 #include "mongoc-host-list-private.h"
 
-#ifndef _WIN32
-#include <sys/utsname.h>
-#else
-#include <windows.h>
-#include <stdio.h>
-#include <VersionHelpers.h>
-#endif
 
 
 #undef MONGOC_LOG_DOMAIN
@@ -58,155 +54,6 @@ static void init_ismaster (bson_t* cmd) {
 }
 
 
-#ifndef _WIN32
-static void get_system_info (const char** name, const char** architecture,
-                             const char** version)
-{
-   struct utsname system_info;
-   int res;
-
-   res = uname (&system_info);
-
-   if (res != 0) {
-      MONGOC_ERROR ("Uname failed with error %d", errno);
-      return;
-   }
-
-   if (name) {
-      *name = bson_strdup (system_info.sysname);
-   }
-
-   if (architecture) {
-      *architecture = bson_strdup (system_info.machine);
-   }
-
-   if (version) {
-      *version = bson_strdup (system_info.release);
-   }
-}
-#else
-static char*
-windows_get_version_string ()
-{
-   /*
-      As new versions of windows are released, we'll have to add to this
-      See:
-      https://msdn.microsoft.com/en-us/library/windows/desktop/ms724832(v=vs.85).aspx
-      For windows names -> version # mapping
-   */
-
-   if (IsWindowsVersionOrGreater (10, 0, 0)) {
-      /* No IsWindows10OrGreater () function available with this version of
-         MSVC */
-      return bson_strdup (">= Windows 10");
-   } else if (IsWindowsVersionOrGreater (6, 3, 0)) {
-      /* No IsWindows8Point10OrGreater() function available with this version
-         of MSVC */
-      return bson_strdup ("Windows 8.1");
-   } else if (IsWindows8OrGreater ()) {
-      return bson_strdup ("Windows 8");
-   } else if (IsWindows7SP1OrGreater ()) {
-      return bson_strdup ("Windows 7.1");
-   } else if (IsWindows7OrGreater ()) {
-      return bson_strdup ("Windows 7");
-   } else if (IsWindowsVistaOrGreater ()) {
-      return bson_strdup ("Windows Vista");
-   } else if (IsWindowsXPOrGreater ()) {
-      return bson_strdup ("Windows XP");
-   }
-
-   return bson_strdup ("Pre Windows XP");
-}
-
-static char* windows_get_arch_string ()
-{
-   SYSTEM_INFO system_info;
-   DWORD arch;
-
-   /* doesn't return anything */
-   GetSystemInfo(&system_info);
-
-   arch = system_info.wProcessorArchitecture;
-   if (arch == PROCESSOR_ARCHITECTURE_AMD64) {
-      return bson_strdup ("x86_64");
-   } else if (arch == PROCESSOR_ARCHITECTURE_ARM) {
-      return bson_strdup ("ARM");
-   } else if (arch == PROCESSOR_ARCHITECTURE_IA64) {
-      return bson_strdup ("IA64");
-   } else if (arch == PROCESSOR_ARCHITECTURE_INTEL) {
-      return bson_strdup ("x86");
-   } else if (arch == PROCESSOR_ARCHITECTURE_UNKNOWN) {
-      return bson_strdup ("Unkown");
-   }
-
-   MONGOC_ERROR ("Processor architecture lookup failed");
-
-   return NULL;
-}
-
-static void get_system_info (const char** name, const char** architecture,
-                             const char** version)
-{
-   const char* result_str;
-
-   if (name) {
-      *name = bson_strdup ("Windows");
-   }
-
-   if (version) {
-      result_str = windows_get_version_string ();
-
-      if (result_str) {
-         *version = result_str;
-      }
-   }
-
-   if (architecture) {
-      result_str = windows_get_arch_string ();
-
-      if (result_str) {
-         *architecture = result_str;
-      }
-   }
-}
-#endif
-
-
-void init_metadata (bson_t* metadata)
-{
-   const char* name = NULL;
-   const char* architecture = NULL;
-   const char* version = NULL;
-
-   BSON_ASSERT (metadata);
-   bson_init (metadata);
-
-   get_system_info (&name, &architecture, &version);
-
-   BCON_APPEND (metadata,
-                METADATA_DRIVER_FIELD, "{",
-                "name", "mongoc",
-                "version", MONGOC_VERSION_S,
-                "}",
-
-                "os", "{",
-                "name", BCON_UTF8 (name ? name : ""),
-                "architecture", BCON_UTF8 (architecture ? architecture : ""),
-                "version", BCON_UTF8 (version ? version : ""),
-                "}",
-
-                "platform",
-                "CC=" MONGOC_CC " "
-                /* Not including CFLAGS because its pretty big and can be
-                   determined from configure's args anyway */
-                /* "CLFAGS=" MONGOC_CFLAGS " " */
-                "./configure " MONGOC_CONFIGURE_ARGS);
-
-   bson_free ((char*)name);
-   bson_free ((char*)architecture);
-   bson_free ((char*)version);
-}
-
 
 mongoc_topology_scanner_t *
 mongoc_topology_scanner_new (const mongoc_uri_t          *uri,
@@ -218,7 +65,7 @@ mongoc_topology_scanner_new (const mongoc_uri_t          *uri,
    ts->async = mongoc_async_new ();
 
    init_ismaster (&ts->ismaster_cmd);
-   init_metadata (&ts->ismaster_metadata);
+   _init_client_metadata (&ts->ismaster_metadata);
 
    ts->cb = cb;
    ts->cb_data = data;
