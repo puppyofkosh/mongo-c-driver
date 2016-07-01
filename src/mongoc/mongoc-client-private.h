@@ -64,7 +64,6 @@ BSON_BEGIN_DECLS
 #define METADATA_FIELD "meta"
 #define METADATA_APPLICATION_FIELD "application"
 #define METADATA_APPLICATION_NAME_FIELD "name"
-#define METADATA_APPLICATION_NAME_MAX_LENGTH 128
 
 #define METADATA_DRIVER_FIELD "driver"
 #define METADATA_DRIVER_NAME_FIELD "name"
@@ -151,15 +150,15 @@ _mongoc_client_kill_cursor              (mongoc_client_t *client,
                                          const char      *db,
                                          const char      *collection);
 void
-mongoc_client_metadata_init             (bson_t* metadata);
+mongoc_client_metadata_init (bson_t *metadata);
 bool
-mongoc_client_metadata_set_application  (bson_t              *metadata,
-                                         const char          *application_name);
+mongoc_client_metadata_set_application (bson_t     *metadata,
+                                        const char *application_name);
 bool
-mongoc_client_metadata_set_data (bson_t                    *old_metadata,
-                                 const char                *driver_name,
-                                 const char                *version,
-                                 const char                *platform);
+mongoc_client_metadata_set_data (bson_t     *old_metadata,
+                                 const char *driver_name,
+                                 const char *version,
+                                 const char *platform);
 BSON_END_DECLS
 
 

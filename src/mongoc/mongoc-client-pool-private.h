@@ -30,7 +30,7 @@ BSON_BEGIN_DECLS
 size_t 				  mongoc_client_pool_get_size(mongoc_client_pool_t *pool);
 
 void
-mongoc_client_pool_get_metadata (mongoc_client_pool_t *pool,
+_mongoc_client_pool_get_metadata (mongoc_client_pool_t *pool,
                                  bson_t *buf);
 BSON_END_DECLS
 

@@ -215,7 +215,7 @@ static uint32_t get_metadata_len (mongoc_client_pool_t* pool)
    bson_t metadata;
    uint32_t ret;
 
-   mongoc_client_pool_get_metadata (pool, &metadata);
+   _mongoc_client_pool_get_metadata (pool, &metadata);
    ret = metadata.len;
    bson_destroy (&metadata);
 

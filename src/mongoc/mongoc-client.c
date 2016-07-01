@@ -1935,7 +1935,7 @@ mongoc_client_metadata_set_application (bson_t               *metadata,
 
    application_name_len = (uint32_t)strlen (application_name);
 
-   if (application_name_len > METADATA_APPLICATION_NAME_MAX_LENGTH) {
+   if (application_name_len > MONGOC_METADATA_APPLICATION_NAME_MAX_LENGTH) {
       return false;
    }
 
@@ -1992,10 +1992,10 @@ mongoc_client_metadata_set_application (bson_t               *metadata,
      version: "1.4.0 / [platform]"
   },
  */
-static void update_driver_doc (bson_iter_t* src_iter,
-                               bson_t* dst_driver,
-                               const char* name,
-                               const char* version)
+static void update_driver_doc (bson_iter_t *src_iter,
+                               bson_t *dst_driver,
+                               const char *name,
+                               const char *version)
 {
    const char* key;
    const char* value;

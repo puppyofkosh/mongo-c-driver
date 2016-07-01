@@ -318,7 +318,7 @@ mongoc_client_pool_min_size(mongoc_client_pool_t *pool,
 }
 
 void
-mongoc_client_pool_get_metadata (mongoc_client_pool_t *pool,
+_mongoc_client_pool_get_metadata (mongoc_client_pool_t *pool,
                                  bson_t *buf) {
    ENTRY;
 
@@ -375,11 +375,8 @@ mongoc_client_pool_set_application (mongoc_client_pool_t   *pool,
 {
    bool ret;
    bson_t* metadata;
-   /* Locking mutex even though this function can only get called once because
-      we don't want to write to the metadata bson_t if someone else is reading
-      from it at the same time */
-   mongoc_mutex_lock (&pool->mutex);
 
+   mongoc_mutex_lock (&pool->mutex);
    if (mongoc_topology_is_scanner_active (pool->topology)) {
       /* Once the scanner is active we cannot tell it to send
          different metadata */
