@@ -51,6 +51,9 @@ typedef struct mongoc_topology_scanner_node
    int64_t                         last_used;
    int64_t                         last_failed;
    bool                            has_auth;
+
+   bool                            sent_metadata;
+
    mongoc_host_list_t              host;
    struct addrinfo                *dns_results;
    struct addrinfo                *current_dns_result;
@@ -117,8 +120,7 @@ mongoc_topology_scanner_node_destroy (mongoc_topology_scanner_node_t *node,
 void
 mongoc_topology_scanner_start (mongoc_topology_scanner_t *ts,
                                int32_t timeout_msec,
-                               bool obey_cooldown,
-                               bool include_metadata);
+                               bool obey_cooldown);
 
 bool
 mongoc_topology_scanner_work (mongoc_topology_scanner_t *ts,

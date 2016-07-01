@@ -101,13 +101,6 @@ _mongoc_topology_scanner_cb (uint32_t      id,
       mongoc_mutex_lock (&topology->mutex);
    }
 
-   if (ismaster_response) {
-      /* In future calls to mongoc_topology_scanner_start we won't pass any
-         additional metadata. We set this flag here, because we only want to
-         disable sending metadata once we've succeeded in connecting */
-      topology->ismaster_metadata_sent = true;
-   }
-
    sd = mongoc_topology_description_server_by_id (&topology->description, id,
                                                   NULL);
 
@@ -119,7 +112,6 @@ _mongoc_topology_scanner_cb (uint32_t      id,
       /* The processing of the ismaster results above may have added/removed
        * server descriptions. We need to reconcile that with our monitoring agents
        */
-
       mongoc_topology_reconcile(topology);
 
       /* TODO only wake up all clients if we found any topology changes */
@@ -232,8 +224,6 @@ mongoc_topology_new (const mongoc_uri_t *uri,
    mongoc_cond_init (&topology->cond_client);
    mongoc_cond_init (&topology->cond_server);
 
-   topology->ismaster_metadata_sent = false;
-
    for ( hl = mongoc_uri_get_hosts (uri); hl; hl = hl->next) {
       mongoc_topology_description_add_server (&topology->description,
                                               hl->host_and_port,
@@ -337,8 +327,7 @@ _mongoc_topology_do_blocking_scan (mongoc_topology_t *topology,
    scanner = topology->scanner;
    mongoc_topology_scanner_start (scanner,
                                   (int32_t) topology->connect_timeout_msec,
-                                  true,
-                                  !topology->ismaster_metadata_sent);
+                                  true);
 
    while (_mongoc_topology_run_scanner (topology,
                                         topology->connect_timeout_msec)) {}
@@ -814,8 +803,7 @@ void * _mongoc_topology_run_background (void *data)
          if (timeout <= 0) {
             mongoc_topology_scanner_start (topology->scanner,
                                            topology->connect_timeout_msec,
-                                           false,
-                                           !topology->ismaster_metadata_sent);
+                                           false);
             break;
          } else {
             /* otherwise wait until someone:
