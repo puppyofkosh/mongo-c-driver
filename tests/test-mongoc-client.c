@@ -1759,6 +1759,7 @@ test_client_sends_metadata () {
    mock_server_t *server;
    mongoc_uri_t *uri;
    mongoc_client_t *client;
+   mongoc_client_pool_t *pool;
    future_t *future;
    request_t *request;
    const char * const server_reply = "{'ok': 1, 'ismaster': true}";
@@ -1771,14 +1772,10 @@ test_client_sends_metadata () {
    mock_server_run (server);
    uri = mongoc_uri_copy (mock_server_get_uri (server));
    mongoc_uri_set_option_as_int32 (uri, "heartbeatFrequencyMS", heartbeat_ms);
-   client = mongoc_client_new_from_uri (uri);
+   pool = mongoc_client_pool_new(uri);
 
-   future = future_client_command_simple (client,
-                                          "admin",
-                                          tmp_bson ("{'ping': 1}"),
-                                          NULL,
-                                          NULL,
-                                          &error);
+   /* Pop a client to trigger the topology scanner */
+   client = mongoc_client_pool_pop (pool);
    request = mock_server_receives_ismaster (server);
 
    /* Make sure the isMaster request has a "meta" field: */
@@ -1791,24 +1788,8 @@ test_client_sends_metadata () {
    mock_server_replies_simple (request, server_reply);
    request_destroy (request);
 
-   /* Make sure the ping command succeeds */
-   request = mock_server_receives_command (server, "admin",
-                                           MONGOC_QUERY_SLAVE_OK,
-                                           "{'ping': 1}");
-   mock_server_replies_ok_and_destroys (request);
-   ASSERT (future_get_bool (future));
-   future_destroy (future);
+   /* Wait a bit for another isMaster command to come from the pool */
 
-   /* Wait for the isMaster cooldown to end. Then call topology_select
-      which will run isMaster again. This time we want to be sure isMaster
-      does NOT contain the metadata field */
-
-   /* Wait for 2 heartbeats. By the time this is done
-      the cooldown will be over */
-   _mongoc_usleep (heartbeat_ms * 2 * 1000);
-
-   future = future_topology_select (client->topology, MONGOC_SS_READ,
-                                    NULL, &error);
    request = mock_server_receives_ismaster (server);
    ASSERT (request);
    request_doc = request_get_doc (request, 0);
@@ -1818,15 +1799,11 @@ test_client_sends_metadata () {
 
    mock_server_replies_simple (request, server_reply);
 
-   sd = future_get_mongoc_server_description_ptr (future);
-   ASSERT (sd);
-
    /* cleanup */
-   mongoc_server_description_destroy (sd);
+   mongoc_client_pool_push (pool, client);
    request_destroy (request);
-   future_destroy (future);
 
-   mongoc_client_destroy (client);
+   mongoc_client_pool_destroy (pool);
    mongoc_uri_destroy (uri);
    mock_server_destroy (server);
 }
