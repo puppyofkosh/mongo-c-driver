@@ -245,9 +245,7 @@ test_mongoc_client_pool_metadata ()
    ASSERT (!mongoc_client_pool_set_metadata (pool, "a", "a", "a"));
    mongoc_client_pool_destroy (pool);
 
-   /* ===
-      Make sure that after we pop a client we can't set metadata anymore
-      === */
+   /* Make sure that after we pop a client we can't set metadata anymore */
    pool = mongoc_client_pool_new(uri);
 
    client = mongoc_client_pool_pop (pool);

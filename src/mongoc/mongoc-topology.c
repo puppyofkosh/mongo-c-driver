@@ -101,6 +101,13 @@ _mongoc_topology_scanner_cb (uint32_t      id,
       mongoc_mutex_lock (&topology->mutex);
    }
 
+   if (ismaster_response) {
+      /* In future calls to mongoc_topology_scanner_start we won't pass any
+         additional metadata. We set this flag here, because we only want to
+         disable sending metadata once we've succeeded in connecting */
+      topology->ismaster_metadata_sent = true;
+   }
+
    sd = mongoc_topology_description_server_by_id (&topology->description, id,
                                                   NULL);
 
@@ -114,11 +121,6 @@ _mongoc_topology_scanner_cb (uint32_t      id,
        */
 
       mongoc_topology_reconcile(topology);
-
-      /* In future calls to mongoc_topology_scanner_start we won't pass any
-         additional metadata. We set this flag here, because we only want to
-         disable sending metadata once we've succeeded in connecting */
-      topology->ismaster_metadata_sent = true;
 
       /* TODO only wake up all clients if we found any topology changes */
       mongoc_cond_broadcast (&topology->cond_client);

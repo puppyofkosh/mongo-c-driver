@@ -1964,12 +1964,11 @@ mongoc_client_metadata_set_application (bson_t               *metadata,
       return false;
    }
 
-   bson_append_document_begin (metadata, METADATA_APPLICATION_FIELD,
-                              -1, &application);
-   bson_append_utf8 (&application,
+   BSON_APPEND_DOCUMENT_BEGIN (metadata, METADATA_APPLICATION_FIELD,
+                               &application);
+   BSON_APPEND_UTF8 (&application,
                      METADATA_APPLICATION_NAME_FIELD,
-                     -1,
-                     application_name, application_name_len);
+                     application_name);
    bson_append_document_end (metadata, &application);
 
    /* Make sure our prediction was valid */
@@ -2013,8 +2012,8 @@ static void update_driver_doc (bson_iter_t *src_iter,
       } else if (strcmp (key, METADATA_DRIVER_VERSION_FIELD) == 0) {
          suffix = version;
       } else {
-         /* Maybe bad style? */
-         BSON_ASSERT (0 && "Schema of driver field is wrong");
+         MONGOC_ERROR ("Schema of driver field is wrong");
+         abort ();
       }
 
       new_val = value;
@@ -2022,7 +2021,7 @@ static void update_driver_doc (bson_iter_t *src_iter,
          new_val = bson_strdup_printf ("%s / %s", value, suffix);
       }
 
-      bson_append_utf8 (dst_driver, key, -1, new_val, -1);
+      BSON_APPEND_UTF8 (dst_driver, key, new_val);
 
       if (suffix) {
          bson_free ((char*)new_val);
@@ -2063,8 +2062,7 @@ bool mongoc_client_metadata_set_data (bson_t                    *old_metadata,
          value = bson_iter_utf8 (&iter, NULL);
 
          new_val = bson_strdup_printf ("%s / %s", value, platform);
-         bson_append_utf8 (&buffer, METADATA_PLATFORM_FIELD, -1,
-                           new_val, -1);
+         BSON_APPEND_UTF8 (&buffer, METADATA_PLATFORM_FIELD, new_val);
          bson_free ((char*)new_val);
          continue;
       }
@@ -2075,7 +2073,7 @@ bool mongoc_client_metadata_set_data (bson_t                    *old_metadata,
          BSON_ASSERT (BSON_ITER_HOLDS_DOCUMENT (&iter));
          bson_iter_recurse (&iter, &sub_iter);
 
-         bson_append_document_begin (&buffer, METADATA_DRIVER_FIELD, -1,
+         BSON_APPEND_DOCUMENT_BEGIN (&buffer, METADATA_DRIVER_FIELD,
                                      &child);
          update_driver_doc (&sub_iter, &child, driver_name, version);
          bson_append_document_end (&buffer, &child);

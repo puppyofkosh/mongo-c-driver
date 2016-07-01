@@ -72,17 +72,9 @@ static void get_system_info (const char** name, const char** architecture,
       return;
    }
 
-   if (name) {
-      *name = bson_strdup (system_info.sysname);
-   }
-
-   if (architecture) {
-      *architecture = bson_strdup (system_info.machine);
-   }
-
-   if (version) {
-      *version = bson_strdup (system_info.release);
-   }
+   *name = bson_strdup (system_info.sysname);
+   *architecture = bson_strdup (system_info.machine);
+   *version = bson_strdup (system_info.release);
 }
 #else
 static char*
@@ -149,25 +141,9 @@ static void get_system_info (const char** name, const char** architecture,
 {
    const char* result_str;
 
-   if (name) {
-      *name = bson_strdup ("Windows");
-   }
-
-   if (version) {
-      result_str = windows_get_version_string ();
-
-      if (result_str) {
-         *version = result_str;
-      }
-   }
-
-   if (architecture) {
-      result_str = windows_get_arch_string ();
-
-      if (result_str) {
-         *architecture = result_str;
-      }
-   }
+   *name = bson_strdup ("Windows");
+   *version = windows_get_version_string ();
+   *architecture = windows_get_arch_string ();
 }
 #endif
 
@@ -199,7 +175,7 @@ void init_metadata (bson_t* metadata)
                 "CC=" MONGOC_CC " "
                 /* Not including CFLAGS because its pretty big and can be
                    determined from configure's args anyway */
-                /* "CLFAGS=" MONGOC_CFLAGS " " */
+                /* "CFLAGS=" MONGOC_CFLAGS " " */
                 "./configure " MONGOC_CONFIGURE_ARGS);
 
    bson_free ((char*)name);
