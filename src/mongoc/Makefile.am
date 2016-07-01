@@ -28,8 +28,6 @@ INST_H_FILES = \
 	src/mongoc/mongoc-buffer-private.h \
 	src/mongoc/mongoc-bulk-operation-private.h \
 	src/mongoc/mongoc-bulk-operation.h \
-	src/mongoc/mongoc-client-metadata.h \
-	src/mongoc/mongoc-client-metadata-private.h \
 	src/mongoc/mongoc-client-pool.h \
 	src/mongoc/mongoc-client-pool-private.h \
 	src/mongoc/mongoc-client-private.h \
@@ -141,7 +139,6 @@ MONGOC_SOURCES_SHARED += \
 	src/mongoc/mongoc-bulk-operation.c \
 	src/mongoc/mongoc-b64.c \
 	src/mongoc/mongoc-client.c \
-	src/mongoc/mongoc-client-metadata.c \
 	src/mongoc/mongoc-client-pool.c \
 	src/mongoc/mongoc-cluster.c \
 	src/mongoc/mongoc-collection.c \

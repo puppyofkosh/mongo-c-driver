@@ -25,7 +25,6 @@
 #include "mongoc-apm.h"
 #include "mongoc-bulk-operation.h"
 #include "mongoc-client.h"
-#include "mongoc-client-metadata.h"
 #include "mongoc-client-pool.h"
 #include "mongoc-collection.h"
 #include "mongoc-config.h"
