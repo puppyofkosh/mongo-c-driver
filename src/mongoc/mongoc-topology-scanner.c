@@ -53,13 +53,13 @@ mongoc_topology_scanner_ismaster_handler (mongoc_async_cmd_result_t async_status
                                           void                     *data,
                                           bson_error_t             *error);
 
-static void add_ismaster (bson_t* cmd) {
+static void _add_ismaster (bson_t* cmd) {
    BSON_APPEND_INT32 (cmd, "isMaster", 1);
 }
 
 
 #ifndef _WIN32
-static void get_system_info (const char** name, const char** architecture,
+static void _get_system_info (const char** name, const char** architecture,
                              const char** version)
 {
    struct utsname system_info;
@@ -77,8 +77,7 @@ static void get_system_info (const char** name, const char** architecture,
    *version = bson_strdup (system_info.release);
 }
 #else
-static char*
-windows_get_version_string ()
+static char* _windows_get_version_string ()
 {
    /*
       As new versions of windows are released, we'll have to add to this
@@ -110,7 +109,7 @@ windows_get_version_string ()
    return bson_strdup ("Pre Windows XP");
 }
 
-static char* windows_get_arch_string ()
+static char* _windows_get_arch_string ()
 {
    SYSTEM_INFO system_info;
    DWORD arch;
@@ -136,7 +135,7 @@ static char* windows_get_arch_string ()
    return NULL;
 }
 
-static void get_system_info (const char** name, const char** architecture,
+static void _get_system_info (const char** name, const char** architecture,
                              const char** version)
 {
    const char* result_str;
@@ -147,7 +146,7 @@ static void get_system_info (const char** name, const char** architecture,
 }
 #endif
 
-static uint32_t build_config_mask () {
+static uint32_t _build_config_mask () {
    uint32_t mask = 0;
 
 #ifdef MONGOC_ENABLE_SSL_SECURE_CHANNEL
@@ -205,7 +204,7 @@ static uint32_t build_config_mask () {
    return mask;
 }
 
-void init_metadata (bson_t* metadata)
+static void _init_metadata (bson_t* metadata)
 {
    char *platform_str;
 
@@ -216,13 +215,13 @@ void init_metadata (bson_t* metadata)
    BSON_ASSERT (metadata);
    bson_init (metadata);
 
-   get_system_info (&name, &architecture, &version);
+   _get_system_info (&name, &architecture, &version);
 
    platform_str = bson_strdup_printf (
       "CC=%s "
       "CFLAGS=%s "
       "configure=%d",
-      MONGOC_CC, MONGOC_CFLAGS, build_config_mask ());
+      MONGOC_CC, MONGOC_CFLAGS, _build_config_mask ());
 
    BCON_APPEND (metadata,
                 METADATA_DRIVER_FIELD, "{",
@@ -264,7 +263,7 @@ _send_ismaster_cmd (mongoc_topology_scanner_t *ts,
             the document each time (rather than storing it in
             the struct), since chances are this code will
             only execute once */
-         add_ismaster (buffer);
+         _add_ismaster (buffer);
          BSON_APPEND_DOCUMENT (buffer,
                                METADATA_FIELD,
                                &ts->ismaster_metadata);
@@ -291,8 +290,8 @@ mongoc_topology_scanner_new (const mongoc_uri_t          *uri,
    ts->async = mongoc_async_new ();
 
    bson_init (&ts->ismaster_cmd);
-   add_ismaster (&ts->ismaster_cmd);
-   init_metadata (&ts->ismaster_metadata);
+   _add_ismaster (&ts->ismaster_cmd);
+   _init_metadata (&ts->ismaster_metadata);
 
    ts->cb = cb;
    ts->cb_data = data;

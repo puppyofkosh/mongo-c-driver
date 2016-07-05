@@ -1760,12 +1760,9 @@ test_client_sends_metadata () {
    mongoc_uri_t *uri;
    mongoc_client_t *client;
    mongoc_client_pool_t *pool;
-   future_t *future;
    request_t *request;
    const char * const server_reply = "{'ok': 1, 'ismaster': true}";
    const bson_t* request_doc;
-   bson_error_t error;
-   mongoc_server_description_t* sd;
    const int heartbeat_ms = 500;
 
    server = mock_server_new ();
