@@ -256,7 +256,9 @@ _send_ismaster_cmd (mongoc_topology_scanner_t *ts,
                     bson_t *buffer) {
    const bson_t *ismaster_cmd_to_send = &ts->ismaster_cmd;
 
-   if (!node->sent_metadata) {
+   if (node->last_used == -1 || node->last_failed != -1) {
+      /* If this is the first time using the node or if it's the first time
+         using it after a failure, resend metadata */
       if (bson_empty (buffer)) {
          /* Make a new document which includes both isMaster
             and the metadata and we'll send that. We rebuild
@@ -349,7 +351,7 @@ mongoc_topology_scanner_add (mongoc_topology_scanner_t *ts,
    node->id = id;
    node->ts = ts;
    node->last_failed = -1;
-   node->sent_metadata = false;
+   node->last_used = -1;
 
    DL_APPEND(ts->nodes, node);
 
@@ -520,7 +522,6 @@ mongoc_topology_scanner_ismaster_handler (mongoc_async_cmd_result_t async_status
       mongoc_stream_failed (node->stream);
       node->stream = NULL;
       node->last_failed = now;
-      node->sent_metadata = false;
       message = async_status == MONGOC_ASYNC_CMD_TIMEOUT ?
                 "connection error" :
                 "connection timeout";
@@ -532,7 +533,6 @@ mongoc_topology_scanner_ismaster_handler (mongoc_async_cmd_result_t async_status
                       node->host.host_and_port);
    } else {
       node->last_failed = -1;
-      node->sent_metadata = true;
    }
 
    node->last_used = now;

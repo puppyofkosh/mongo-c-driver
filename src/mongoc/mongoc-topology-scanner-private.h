@@ -52,8 +52,6 @@ typedef struct mongoc_topology_scanner_node
    int64_t                         last_failed;
    bool                            has_auth;
 
-   bool                            sent_metadata;
-
    mongoc_host_list_t              host;
    struct addrinfo                *dns_results;
    struct addrinfo                *current_dns_result;
