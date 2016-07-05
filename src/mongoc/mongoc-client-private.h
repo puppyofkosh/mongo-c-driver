@@ -73,6 +73,8 @@ BSON_BEGIN_DECLS
 
 #define METADATA_MAX_SIZE 512
 
+
+
 struct _mongoc_client_t
 {
    mongoc_list_t             *conns;

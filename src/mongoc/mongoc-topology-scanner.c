@@ -23,7 +23,6 @@
 #include "mongoc-topology-scanner-private.h"
 #include "mongoc-stream-socket.h"
 #include "mongoc-version.h"
-#include "mongoc-config.h"
 
 #ifdef MONGOC_ENABLE_SSL
 #include "mongoc-stream-tls.h"
@@ -60,7 +59,7 @@ static void _add_ismaster (bson_t* cmd) {
 
 #ifndef _WIN32
 static void _get_system_info (const char** name, const char** architecture,
-                             const char** version)
+                              const char** version)
 {
    struct utsname system_info;
    int res;
@@ -136,7 +135,7 @@ static char* _windows_get_arch_string ()
 }
 
 static void _get_system_info (const char** name, const char** architecture,
-                             const char** version)
+                              const char** version)
 {
    const char* result_str;
 
@@ -146,68 +145,8 @@ static void _get_system_info (const char** name, const char** architecture,
 }
 #endif
 
-static uint32_t _build_config_mask () {
-   uint32_t mask = 0;
-
-#ifdef MONGOC_ENABLE_SSL_SECURE_CHANNEL
-   mask |= 1 << 0;
-#endif
-
-#ifdef MONGOC_ENABLE_CRYPTO_CNG
-   mask |= 1 << 1;
-#endif
-
-#ifdef MONGOC_ENABLE_SSL_SECURE_TRANSPORT
-   mask |= 1 << 2;
-#endif
-
-#ifdef MONGOC_ENABLE_CRYPTO_COMMON_CRYPTO
-   mask |= 1 << 3;
-#endif
-
-#ifdef MONGOC_ENABLE_SSL_OPENSSL
-   mask |= 1 << 4;
-#endif
-
-#ifdef MONGOC_ENABLE_CRYPTO_LIBCRYPTO
-   mask |= 1 << 5;
-#endif
-
-#ifdef MONGOC_ENABLE_SSL
-   mask |= 1 << 6;
-#endif
-
-#ifdef MONGOC_ENABLE_CRYPTO
-   mask |= 1 << 7;
-#endif
-
-#ifdef MONGOC_ENABLE_CRYPTO_SYSTEM_PROFILE
-   mask |= 1 << 8;
-#endif
-
-#ifdef MONGOC_ENABLE_SASL
-   mask |= 1 << 9;
-#endif
-
-#ifdef MONGOC_HAVE_SASL_CLIENT_DONE
-   mask |= 1 << 10;
-#endif
-
-#ifdef MONGOC_HAVE_WEAK_SYMBOLS
-   mask |= 1 << 11;
-#endif
-
-#ifdef MONGOC_NO_AUTOMATIC_GLOBALS
-   mask |= 1 << 12;
-#endif
-
-   return mask;
-}
-
 static void _init_metadata (bson_t* metadata)
 {
-   char *platform_str;
-
    const char* name = NULL;
    const char* architecture = NULL;
    const char* version = NULL;
@@ -216,12 +155,6 @@ static void _init_metadata (bson_t* metadata)
    bson_init (metadata);
 
    _get_system_info (&name, &architecture, &version);
-
-   platform_str = bson_strdup_printf (
-      "CC=%s "
-      "CFLAGS=%s "
-      "configure=%d",
-      MONGOC_CC, MONGOC_CFLAGS, _build_config_mask ());
 
    BCON_APPEND (metadata,
                 METADATA_DRIVER_FIELD, "{",
@@ -235,9 +168,13 @@ static void _init_metadata (bson_t* metadata)
                 "version", BCON_UTF8 (version ? version : ""),
                 "}",
 
-                "platform", BCON_UTF8 (platform_str));
+                "platform",
+                "CC=" MONGOC_CC " "
+                /* Not including CFLAGS because its pretty big and can be
+                   determined from configure's args anyway */
+                /* "CFLAGS=" MONGOC_CFLAGS " " */
+                "./configure " MONGOC_CONFIGURE_ARGS);
 
-   bson_free (platform_str);
    bson_free ((char*)name);
    bson_free ((char*)architecture);
    bson_free ((char*)version);
