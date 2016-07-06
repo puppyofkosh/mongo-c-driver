@@ -200,6 +200,7 @@ set (SOURCES
    ${SOURCE_DIR}/src/mongoc/mongoc-buffer.c
    ${SOURCE_DIR}/src/mongoc/mongoc-bulk-operation.c
    ${SOURCE_DIR}/src/mongoc/mongoc-client.c
+   ${SOURCE_DIR}/src/mongoc/mongoc-client-metadata.c
    ${SOURCE_DIR}/src/mongoc/mongoc-client-pool.c
    ${SOURCE_DIR}/src/mongoc/mongoc-cluster.c
    ${SOURCE_DIR}/src/mongoc/mongoc-collection.c
@@ -258,6 +259,8 @@ set (HEADERS
    ${SOURCE_DIR}/src/mongoc/mongoc-apm-private.h
    ${SOURCE_DIR}/src/mongoc/mongoc-bulk-operation.h
    ${SOURCE_DIR}/src/mongoc/mongoc-client.h
+   ${SOURCE_DIR}/src/mongoc/mongoc-client-metadata.h
+   ${SOURCE_DIR}/src/mongoc/mongoc-client-metadata-private.h
    ${SOURCE_DIR}/src/mongoc/mongoc-client-pool.h
    ${SOURCE_DIR}/src/mongoc/mongoc-collection.h
    ${SOURCE_DIR}/src/mongoc/mongoc-cursor.h

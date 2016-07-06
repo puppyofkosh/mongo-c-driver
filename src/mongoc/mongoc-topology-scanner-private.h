@@ -70,7 +70,10 @@ typedef struct mongoc_topology_scanner
    mongoc_topology_scanner_node_t *nodes;
    uint32_t                        seq;
    bson_t                          ismaster_cmd;
-   bson_t                          ismaster_metadata;
+
+   bson_t                          ismaster_cmd_with_metadata;
+   const char                     *metadata_application;
+
    mongoc_topology_scanner_cb_t    cb;
    void                           *cb_data;
    bool                            in_progress;

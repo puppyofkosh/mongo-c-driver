@@ -61,19 +61,6 @@ BSON_BEGIN_DECLS
 /* first version to support readConcern */
 #define WIRE_VERSION_READ_CONCERN 4
 
-#define METADATA_FIELD "meta"
-#define METADATA_APPLICATION_FIELD "application"
-#define METADATA_APPLICATION_NAME_FIELD "name"
-
-#define METADATA_DRIVER_FIELD "driver"
-#define METADATA_DRIVER_NAME_FIELD "name"
-#define METADATA_DRIVER_VERSION_FIELD "version"
-
-#define METADATA_PLATFORM_FIELD "platform"
-
-#define METADATA_MAX_SIZE 512
-
-
 
 struct _mongoc_client_t
 {
@@ -101,8 +88,6 @@ struct _mongoc_client_t
 
    int32_t                    error_api_version;
    bool                       error_api_set;
-
-   bool                       metadata_set;
 };
 
 
@@ -149,16 +134,6 @@ _mongoc_client_kill_cursor              (mongoc_client_t *client,
                                          int64_t          operation_id,
                                          const char      *db,
                                          const char      *collection);
-void
-mongoc_client_metadata_init (bson_t *metadata);
-bool
-mongoc_client_metadata_set_application (bson_t     *metadata,
-                                        const char *application_name);
-bool
-mongoc_client_metadata_set_data (bson_t     *old_metadata,
-                                 const char *driver_name,
-                                 const char *version,
-                                 const char *platform);
 BSON_END_DECLS
 
 

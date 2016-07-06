@@ -114,6 +114,8 @@ static MONGOC_ONCE_FUN( _mongoc_do_init)
    }
 #endif
 
+   _mongoc_client_metadata_init ();
+
    MONGOC_ONCE_RETURN;
 }
 
@@ -144,6 +146,8 @@ static MONGOC_ONCE_FUN( _mongoc_do_cleanup)
 #endif
 
    _mongoc_counters_cleanup ();
+
+   _mongoc_client_metadata_cleanup ();
 
    MONGOC_ONCE_RETURN;
 }

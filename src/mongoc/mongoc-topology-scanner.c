@@ -18,6 +18,7 @@
 #include <bson-string.h>
 
 #include "mongoc-client-private.h"
+#include "mongoc-client-metadata-private.h"
 #include "mongoc-error.h"
 #include "mongoc-trace.h"
 #include "mongoc-topology-scanner-private.h"
@@ -56,158 +57,39 @@ static void _add_ismaster (bson_t* cmd) {
    BSON_APPEND_INT32 (cmd, "isMaster", 1);
 }
 
+static void _build_ismaster_with_metadata (mongoc_topology_scanner_t* ts) {
+   bson_t* doc = &ts->ismaster_cmd_with_metadata;
+   bson_t metadata_doc = BSON_INITIALIZER;
 
-#ifndef _WIN32
-static void _get_system_info (const char** name, const char** architecture,
-                              const char** version)
-{
-   struct utsname system_info;
-   int res;
+   _add_ismaster (doc);
 
-   res = uname (&system_info);
+   _build_metadata_doc_with_application (&metadata_doc,
+                                         ts->metadata_application);
+   BSON_APPEND_DOCUMENT (doc,
+                         METADATA_FIELD,
+                         &metadata_doc);
 
-   if (res != 0) {
-      MONGOC_ERROR ("Uname failed with error %d", errno);
-      return;
-   }
-
-   *name = bson_strdup (system_info.sysname);
-   *architecture = bson_strdup (system_info.machine);
-   *version = bson_strdup (system_info.release);
-}
-#else
-static char* _windows_get_version_string ()
-{
-   /*
-      As new versions of windows are released, we'll have to add to this
-      See:
-      https://msdn.microsoft.com/en-us/library/windows/desktop/ms724832(v=vs.85).aspx
-      For windows names -> version # mapping
-   */
-
-   if (IsWindowsVersionOrGreater (10, 0, 0)) {
-      /* No IsWindows10OrGreater () function available with this version of
-         MSVC */
-      return bson_strdup (">= Windows 10");
-   } else if (IsWindowsVersionOrGreater (6, 3, 0)) {
-      /* No IsWindows8Point10OrGreater() function available with this version
-         of MSVC */
-      return bson_strdup ("Windows 8.1");
-   } else if (IsWindows8OrGreater ()) {
-      return bson_strdup ("Windows 8");
-   } else if (IsWindows7SP1OrGreater ()) {
-      return bson_strdup ("Windows 7.1");
-   } else if (IsWindows7OrGreater ()) {
-      return bson_strdup ("Windows 7");
-   } else if (IsWindowsVistaOrGreater ()) {
-      return bson_strdup ("Windows Vista");
-   } else if (IsWindowsXPOrGreater ()) {
-      return bson_strdup ("Windows XP");
-   }
-
-   return bson_strdup ("Pre Windows XP");
-}
-
-static char* _windows_get_arch_string ()
-{
-   SYSTEM_INFO system_info;
-   DWORD arch;
-
-   /* doesn't return anything */
-   GetSystemInfo(&system_info);
-
-   arch = system_info.wProcessorArchitecture;
-   if (arch == PROCESSOR_ARCHITECTURE_AMD64) {
-      return bson_strdup ("x86_64");
-   } else if (arch == PROCESSOR_ARCHITECTURE_ARM) {
-      return bson_strdup ("ARM");
-   } else if (arch == PROCESSOR_ARCHITECTURE_IA64) {
-      return bson_strdup ("IA64");
-   } else if (arch == PROCESSOR_ARCHITECTURE_INTEL) {
-      return bson_strdup ("x86");
-   } else if (arch == PROCESSOR_ARCHITECTURE_UNKNOWN) {
-      return bson_strdup ("Unkown");
-   }
-
-   MONGOC_ERROR ("Processor architecture lookup failed");
-
-   return NULL;
-}
-
-static void _get_system_info (const char** name, const char** architecture,
-                              const char** version)
-{
-   const char* result_str;
-
-   *name = bson_strdup ("Windows");
-   *version = windows_get_version_string ();
-   *architecture = windows_get_arch_string ();
-}
-#endif
-
-static void _init_metadata (bson_t* metadata)
-{
-   const char* name = NULL;
-   const char* architecture = NULL;
-   const char* version = NULL;
-
-   BSON_ASSERT (metadata);
-   bson_init (metadata);
-
-   _get_system_info (&name, &architecture, &version);
-
-   BCON_APPEND (metadata,
-                METADATA_DRIVER_FIELD, "{",
-                "name", "mongoc",
-                "version", MONGOC_VERSION_S,
-                "}",
-
-                "os", "{",
-                "name", BCON_UTF8 (name ? name : ""),
-                "architecture", BCON_UTF8 (architecture ? architecture : ""),
-                "version", BCON_UTF8 (version ? version : ""),
-                "}",
-
-                "platform",
-                "CC=" MONGOC_CC " "
-                /* Not including CFLAGS because its pretty big and can be
-                   determined from configure's args anyway */
-                /* "CFLAGS=" MONGOC_CFLAGS " " */
-                "./configure " MONGOC_CONFIGURE_ARGS);
-
-   bson_free ((char*)name);
-   bson_free ((char*)architecture);
-   bson_free ((char*)version);
+   bson_destroy (&metadata_doc);
 }
 
 /* Decides whether or not to include the metadata and sends isMaster
    to given node. If it decides to send the metadata, it puts the isMaster
    command in the given buffer. This function can be called repeatedly
    with the same buffer argument to avoid rebuilding the isMaster command
-   more than once
-*/
+   more than once */
 static void
 _send_ismaster_cmd (mongoc_topology_scanner_t *ts,
                     mongoc_topology_scanner_node_t *node,
-                    int32_t timeout_msec,
-                    bson_t *buffer) {
+                    int32_t timeout_msec) {
    const bson_t *ismaster_cmd_to_send = &ts->ismaster_cmd;
 
    if (node->last_used == -1 || node->last_failed != -1) {
       /* If this is the first time using the node or if it's the first time
          using it after a failure, resend metadata */
-      if (bson_empty (buffer)) {
-         /* Make a new document which includes both isMaster
-            and the metadata and we'll send that. We rebuild
-            the document each time (rather than storing it in
-            the struct), since chances are this code will
-            only execute once */
-         _add_ismaster (buffer);
-         BSON_APPEND_DOCUMENT (buffer,
-                               METADATA_FIELD,
-                               &ts->ismaster_metadata);
+      if (bson_empty (&ts->ismaster_cmd_with_metadata)) {
+         _build_ismaster_with_metadata (ts);
       }
-      ismaster_cmd_to_send = buffer;
+      ismaster_cmd_to_send = &ts->ismaster_cmd_with_metadata;
    }
 
    node->cmd = mongoc_async_cmd (
@@ -230,11 +112,12 @@ mongoc_topology_scanner_new (const mongoc_uri_t          *uri,
 
    bson_init (&ts->ismaster_cmd);
    _add_ismaster (&ts->ismaster_cmd);
-   _init_metadata (&ts->ismaster_metadata);
+   bson_init (&ts->ismaster_cmd_with_metadata);
 
    ts->cb = cb;
    ts->cb_data = data;
    ts->uri = uri;
+   ts->metadata_application = NULL;
 
    return ts;
 }
@@ -271,6 +154,9 @@ mongoc_topology_scanner_destroy (mongoc_topology_scanner_t *ts)
    mongoc_async_destroy (ts->async);
    bson_destroy (&ts->ismaster_cmd);
 
+   /* This field can be set by a mongoc_client */
+   bson_free ((char*)ts->metadata_application);
+
    bson_free (ts);
 }
 
@@ -302,22 +188,19 @@ mongoc_topology_scanner_add_and_scan (mongoc_topology_scanner_t *ts,
                                       int64_t                    timeout_msec)
 {
    mongoc_topology_scanner_node_t *node;
-   bson_t buffer;
 
    BSON_ASSERT (timeout_msec < INT32_MAX);
 
-   bson_init (&buffer);
    node = mongoc_topology_scanner_add (ts, host, id);
 
    /* begin non-blocking connection, don't wait for success */
 
    if (node && mongoc_topology_scanner_node_setup (node, &node->last_error)) {
-      _send_ismaster_cmd (ts, node, timeout_msec, &buffer);
+      _send_ismaster_cmd (ts, node, timeout_msec);
    }
 
    /* if setup fails the node stays in the scanner. destroyed after the scan. */
 
-   bson_destroy (&buffer);
    return;
 }
 
@@ -711,14 +594,12 @@ mongoc_topology_scanner_start (mongoc_topology_scanner_t *ts,
 {
    mongoc_topology_scanner_node_t *node, *tmp;
    int64_t cooldown = INT64_MAX;
-   bson_t buffer;
    BSON_ASSERT (ts);
 
    if (ts->in_progress) {
       return;
    }
 
-   bson_init (&buffer);
    memset (&ts->error, 0, sizeof (bson_error_t));
 
    if (obey_cooldown) {
@@ -733,13 +614,10 @@ mongoc_topology_scanner_start (mongoc_topology_scanner_t *ts,
       if (node->last_failed < cooldown) {
          if (mongoc_topology_scanner_node_setup (node, &node->last_error)) {
             BSON_ASSERT (!node->cmd);
-            _send_ismaster_cmd (ts, node, timeout_msec,
-                                &buffer);
+            _send_ismaster_cmd (ts, node, timeout_msec);
          }
       }
    }
-
-   bson_destroy (&buffer);
 }
 
 /*

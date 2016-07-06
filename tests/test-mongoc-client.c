@@ -3,6 +3,7 @@
 #include <mongoc-host-list-private.h>
 
 #include "mongoc-client-private.h"
+#include "mongoc-client-metadata-private.h"
 #include "mongoc-cursor-private.h"
 #include "mongoc-util-private.h"
 
@@ -1702,7 +1703,6 @@ test_mongoc_client_metadata ()
    mongoc_client_t *client;
    mongoc_client_t *client2;
    int before_size;
-   bson_t* metadata;
 
    memset (big_string, 'a', BUFFER_SIZE -1);
    big_string[BUFFER_SIZE - 1] = '\0';
@@ -1710,13 +1710,8 @@ test_mongoc_client_metadata ()
    client = test_framework_client_new ();
    ASSERT (client);
 
-   metadata = &client->topology->scanner->ismaster_metadata;
-
-   before_size = metadata->len;
    /* Check that setting too long a name causes failure */
    ASSERT (!mongoc_client_set_application (client, big_string));
-   /* Nothing changed */
-   ASSERT (metadata->len == before_size);
 
    /* Success case */
    ASSERT (mongoc_client_set_application (client, short_string));
@@ -1735,13 +1730,10 @@ test_mongoc_client_metadata ()
                                        NULL, "platform abc"));
    mongoc_client_destroy (client2);
 
-   /* Try with some strings which are too long */
-   before_size = metadata->len;
    ASSERT (!mongoc_client_set_metadata (client,
                                         big_string,
                                         NULL,
                                         NULL));
-   ASSERT (metadata->len == before_size);
 
    /* Try the set_metadata function with reasonable values */
    ASSERT (mongoc_client_set_metadata (client, "Driver name",
