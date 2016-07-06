@@ -7,13 +7,9 @@
 
 #include "mongoc-client.h"
 
-bool mongoc_client_set_application (mongoc_client_t *client,
-                                    const char      *application_name);
-
-bool mongoc_client_set_metadata (mongoc_client_t *client,
-                                 const char      *driver_name,
-                                 const char      *version,
-                                 const char      *platform);
+bool mongoc_set_client_metadata (const char *driver_name,
+                                 const char *driver_version,
+                                 const char *platform);
 
 #define MONGOC_METADATA_APPLICATION_NAME_MAX_LENGTH 128
 

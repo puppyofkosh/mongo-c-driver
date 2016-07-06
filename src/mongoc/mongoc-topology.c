@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include "mongoc-client-metadata-private.h"
 #include "mongoc-error.h"
 #include "mongoc-topology-private.h"
 #include "mongoc-util-private.h"
@@ -324,6 +325,7 @@ _mongoc_topology_do_blocking_scan (mongoc_topology_t *topology,
    mongoc_topology_scanner_t *scanner;
 
    topology->scanner_state = MONGOC_TOPOLOGY_SCANNER_SINGLE_THREADED;
+   _mongoc_client_metadata_freeze ();
 
    scanner = topology->scanner;
    mongoc_topology_scanner_start (scanner,
@@ -883,6 +885,7 @@ _mongoc_topology_start_background_scanner (mongoc_topology_t *topology)
    }
 
    topology->scanner_state = MONGOC_TOPOLOGY_SCANNER_BG_RUNNING;
+   _mongoc_client_metadata_freeze ();
    mongoc_mutex_unlock (&topology->mutex);
 
    if (launch_thread) {

@@ -1694,15 +1694,85 @@ test_ssl_reconnect_pooled (void)
 #endif
 
 static void
-test_mongoc_client_metadata ()
+test_mongoc_client_global_metadata_success () {
+   /* Make sure setting the metadata works */
+   ASSERT (mongoc_set_client_metadata ("php driver", "version abc",
+                                       "./configure -nottoomanyflags"));
+}
+
+static void
+test_mongoc_client_global_metadata_after_cmd () {
+   mongoc_client_pool_t *pool;
+   mongoc_client_t* client;
+   mongoc_uri_t *uri;
+
+   uri = mongoc_uri_new("mongodb://127.0.0.1?maxpoolsize=1&minpoolsize=1");
+   pool = mongoc_client_pool_new(uri);
+
+   /* Make sure that after we pop a client we can't set global metadata */
+   pool = mongoc_client_pool_new(uri);
+
+   client = mongoc_client_pool_pop (pool);
+
+   ASSERT (!mongoc_set_client_metadata ("a", "a", "a"));
+
+   mongoc_client_pool_push (pool, client);
+
+   mongoc_uri_destroy(uri);
+   mongoc_client_pool_destroy(pool);
+}
+
+/*
+  Append to the platform field a huge string
+  Make sure that it gets truncated
+*/
+static void
+test_mongoc_client_global_metadata_too_big () {
+   mongoc_client_t* client;
+   bson_t *ismaster_doc;
+   bson_iter_t iter;
+   bson_error_t error;
+   enum {BUFFER_SIZE = METADATA_MAX_SIZE};
+   char big_string[BUFFER_SIZE];
+   bool ret;
+   uint32_t len;
+   const uint8_t* dummy;
+
+   memset (big_string, 'a', BUFFER_SIZE -1);
+   big_string[BUFFER_SIZE - 1] = '\0';
+
+   ASSERT (mongoc_set_client_metadata (NULL, NULL, big_string));
+   client = test_framework_client_new ();
+
+   /* Send a ping */
+   ret = mongoc_client_command_simple (client, "admin",
+                                       tmp_bson ("{'ping': 1}"), NULL,
+                                       NULL, &error);
+   ASSERT (ret);
+
+   /* Make sure the client's isMaster with metadata isn't too big */
+   ismaster_doc = &client->topology->scanner->ismaster_cmd_with_metadata,
+   bson_iter_init_find (&iter,
+                        ismaster_doc,
+                        METADATA_FIELD);
+   ASSERT (BSON_ITER_HOLDS_DOCUMENT (&iter));
+   bson_iter_document (&iter, &len, &dummy);
+
+   /* Should truncate the platform field so we fit exactly */
+   ASSERT (len == METADATA_MAX_SIZE);
+
+   mongoc_client_destroy (client);
+}
+
+
+static void
+test_mongoc_client_application_metadata ()
 {
 
    enum {BUFFER_SIZE = METADATA_MAX_SIZE};
    char big_string[BUFFER_SIZE];
    const char* short_string = "hallo thar";
    mongoc_client_t *client;
-   mongoc_client_t *client2;
-   int before_size;
 
    memset (big_string, 'a', BUFFER_SIZE -1);
    big_string[BUFFER_SIZE - 1] = '\0';
@@ -1718,30 +1788,6 @@ test_mongoc_client_metadata ()
 
    /* Make sure we can't set it twice */
    ASSERT (!mongoc_client_set_application (client, "a"));
-
-
-   /* set_metadata function */
-
-   /* We can only call this function once per client */
-   client2 = test_framework_client_new ();
-   ASSERT (client2);
-   /* try set_metadata with some null strings */
-   ASSERT (mongoc_client_set_metadata (client2, NULL,
-                                       NULL, "platform abc"));
-   mongoc_client_destroy (client2);
-
-   ASSERT (!mongoc_client_set_metadata (client,
-                                        big_string,
-                                        NULL,
-                                        NULL));
-
-   /* Try the set_metadata function with reasonable values */
-   ASSERT (mongoc_client_set_metadata (client, "Driver name",
-                                       "Driver version 123",
-                                       "platform abc"));
-
-   /* make sure it can't be set twice */
-   ASSERT (!mongoc_client_set_metadata (client, "a", "a", "a"));
 
    mongoc_client_destroy (client);
 }
@@ -1844,7 +1890,10 @@ test_client_install (TestSuite *suite)
    TestSuite_Add (suite, "/Client/database_names", test_get_database_names);
    TestSuite_AddFull (suite, "/Client/connect/uds", test_mongoc_client_unix_domain_socket, NULL, NULL, test_framework_skip_if_no_uds);
    TestSuite_Add (suite, "/Client/mismatched_me", test_mongoc_client_mismatched_me);
-   TestSuite_Add (suite, "/Client/set_metadata", test_mongoc_client_metadata);
+   TestSuite_Add (suite, "/Client/application_metadata", test_mongoc_client_application_metadata);
+   TestSuite_Add (suite, "/Client/global_metadata_success", test_mongoc_client_global_metadata_success);
+   TestSuite_Add (suite, "/Client/global_metadata_fail1", test_mongoc_client_global_metadata_after_cmd);
+   TestSuite_Add (suite, "/Client/global_metadata_big", test_mongoc_client_global_metadata_too_big);
    TestSuite_Add (suite, "/Client/sends_metadata", test_client_sends_metadata);
 
 #ifdef TODO_CDRIVER_689

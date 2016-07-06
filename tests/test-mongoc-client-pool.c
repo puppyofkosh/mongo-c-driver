@@ -224,11 +224,6 @@ test_mongoc_client_pool_metadata ()
    ASSERT (mongoc_client_pool_set_application (pool, "some application"));
    /* Be sure we can't set it twice */
    ASSERT (!mongoc_client_pool_set_application (pool, "a"));
-
-   ASSERT (mongoc_client_pool_set_metadata (pool, "php driver", "version abc",
-                                            "./configure -nottoomanyflags"));
-   /* Can't set it twice */
-   ASSERT (!mongoc_client_pool_set_metadata (pool, "a", "a", "a"));
    mongoc_client_pool_destroy (pool);
 
    /* Make sure that after we pop a client we can't set metadata anymore */
@@ -238,14 +233,12 @@ test_mongoc_client_pool_metadata ()
 
    /* Be sure a client can't set it now that we've popped them */
    ASSERT (!mongoc_client_set_application (client, "a"));
-   ASSERT (!mongoc_client_pool_set_metadata (pool, "a", "a", "a"));
 
    mongoc_client_pool_push (pool, client);
 
    /* even now that we pushed the client back we shouldn't be able to set
       the metadata */
    ASSERT (!mongoc_client_pool_set_application (pool, "a"));
-   ASSERT (!mongoc_client_pool_set_metadata (pool, "a", NULL, NULL));
 
    mongoc_uri_destroy(uri);
    mongoc_client_pool_destroy(pool);

@@ -133,47 +133,14 @@ void _mongoc_client_metadata_cleanup () {
    bson_free ((char*)g_metadata.platform);
 }
 
-bool
-_mongoc_client_metadata_set_application (mongoc_topology_t *topology,
-                                         const char *application) {
-   if (_mongoc_topology_is_scanner_active (topology)) {
-      return false;
-   }
-
-   if (strlen (application) > MONGOC_METADATA_APPLICATION_NAME_MAX_LENGTH) {
-      return false;
-   }
-
-   if (topology->scanner->metadata_application != NULL) {
-      /* We've already set it */
-      return false;
-   }
-
-   topology->scanner->metadata_application = bson_strdup (application);
-
-   return true;
-}
-
 static void _append_and_free (const char** s, const char* suffix) {
    const char* tmp = *s;
-   *s = bson_strdup_printf ("%s / %s", tmp, suffix);
-   bson_free ((char*)tmp);
-}
-
-bool _mongoc_client_metadata_set_metadata (const char *driver_name,
-                                           const char *driver_version,
-                                           const char *platform) {
-   if (g_metadata.frozen) {
-      return false;
+   if (suffix) {
+      *s = bson_strdup_printf ("%s / %s", tmp, suffix);
+      bson_free ((char*)tmp);
    }
-
-   _append_and_free (&g_metadata.driver_name, driver_name);
-   _append_and_free (&g_metadata.driver_version, driver_version);
-   _append_and_free (&g_metadata.platform, platform);
-
-   g_metadata.frozen = true;
-   return true;
 }
+
 
 void _build_metadata_doc_with_application (bson_t* doc,
                                            const char* application) {
@@ -207,7 +174,6 @@ void _build_metadata_doc_with_application (bson_t* doc,
       return;
    }
 
-
    /* Try to add platform */
    max_platform_str_size = METADATA_MAX_SIZE -
       (doc->len +
@@ -222,7 +188,7 @@ void _build_metadata_doc_with_application (bson_t* doc,
        4);
 
    platform_len = strlen (g_metadata.platform);
-   if (max_platform_str_size > platform_len) {
+   if (max_platform_str_size < platform_len) {
       platform_copy = bson_strndup (g_metadata.platform,
                                     max_platform_str_size - 1);
       BSON_ASSERT (strlen (platform_copy) <= max_platform_str_size);
@@ -232,6 +198,45 @@ void _build_metadata_doc_with_application (bson_t* doc,
                 METADATA_PLATFORM_FIELD,
                 BCON_UTF8 ((platform_copy ? platform_copy :
                             g_metadata.platform)));
-
    bson_free (platform_copy);
+}
+
+bool
+_mongoc_client_metadata_set_application (mongoc_topology_t *topology,
+                                         const char *application) {
+   if (_mongoc_topology_is_scanner_active (topology)) {
+      return false;
+   }
+
+   if (strlen (application) > MONGOC_METADATA_APPLICATION_NAME_MAX_LENGTH) {
+      return false;
+   }
+
+   if (topology->scanner->metadata_application != NULL) {
+      /* We've already set it */
+      return false;
+   }
+
+   topology->scanner->metadata_application = bson_strdup (application);
+
+   return true;
+}
+
+void _mongoc_client_metadata_freeze () {
+   g_metadata.frozen = true;
+}
+
+bool mongoc_set_client_metadata (const char *driver_name,
+                                 const char *driver_version,
+                                 const char *platform) {
+   if (g_metadata.frozen) {
+      return false;
+   }
+
+   _append_and_free (&g_metadata.driver_name, driver_name);
+   _append_and_free (&g_metadata.driver_version, driver_version);
+   _append_and_free (&g_metadata.platform, platform);
+
+   g_metadata.frozen = true;
+   return true;
 }

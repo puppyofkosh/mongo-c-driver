@@ -1903,20 +1903,10 @@ bool
 mongoc_client_set_application (mongoc_client_t              *client,
                                const char                   *application_name)
 {
-   return _mongoc_client_metadata_set_application (client->topology,
-                                                   application_name);
-}
-
-bool mongoc_client_set_metadata (mongoc_client_t              *client,
-                                 const char                   *driver_name,
-                                 const char                   *driver_version,
-                                 const char                   *platform)
-{
-   if (_mongoc_topology_is_scanner_active (client->topology)) {
-      /* Once the scanner has started we cannot change any of its data */
+   if (!client->topology->single_threaded) {
       return false;
    }
 
-   return _mongoc_client_metadata_set_metadata (driver_name, driver_version,
-                                                platform);
+   return _mongoc_client_metadata_set_application (client->topology,
+                                                   application_name);
 }

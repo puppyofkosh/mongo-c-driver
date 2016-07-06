@@ -31,12 +31,11 @@ typedef struct _mongoc_client_metadata_t
 
 void _mongoc_client_metadata_init ();
 void _mongoc_client_metadata_cleanup ();
-
-bool _mongoc_client_metadata_set_application (mongoc_topology_t *topology,
-                                              const char *application);
-bool _mongoc_client_metadata_set_metadata (const char *driver_name,
-                                           const char *driver_version,
-                                           const char *platform);
 void _build_metadata_doc_with_application (bson_t* doc,
                                            const char* application);
+void _mongoc_client_metadata_freeze ();
+
+bool
+_mongoc_client_metadata_set_application (mongoc_topology_t *topology,
+                                         const char *application);
 #endif
