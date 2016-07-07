@@ -91,7 +91,7 @@ _get_system_info (mongoc_client_metadata_t *metadata)
 }
 #else
 static void
-_get_system_info (mongoc_client_metadata_t *metadata)
+_get_system_info (mongoc_client_metadata_t *meta)
 {
    struct utsname system_info;
    int res;
@@ -103,19 +103,26 @@ _get_system_info (mongoc_client_metadata_t *metadata)
       return;
    }
 
-   metadata->os_name = bson_strdup (system_info.sysname);
-   metadata->os_architecture = bson_strdup (system_info.machine);
-   metadata->os_version = bson_strdup (system_info.release);
+   meta->os_name = bson_strndup (system_info.sysname, METADATA_OS_NAME_MAX);
+   meta->os_architecture = bson_strndup (system_info.machine,
+                                         METADATA_OS_ARCHITECTURE_MAX);
+   meta->os_version = bson_strndup (system_info.release,
+                                    METADATA_OS_VERSION_MAX);
 }
 #endif
 
 void
 _mongoc_client_metadata_init ()
 {
+   const char* driver_name = "mongoc";
+
    /* Do OS detection here */
    _get_system_info (&gMongocMetadata);
 
-   gMongocMetadata.driver_name = bson_strdup ("mongoc");
+   BSON_ASSERT (strlen (driver_name) < METADATA_DRIVER_NAME_MAX);
+   gMongocMetadata.driver_name = bson_strdup (driver_name);
+
+   BSON_ASSERT (strlen (MONGOC_VERSION_S) < METADATA_DRIVER_NAME_MAX);
    gMongocMetadata.driver_version = bson_strdup (MONGOC_VERSION_S);
 
    /* TODO: CFLAGS=%s, MONGOC_CFLAGS */
@@ -147,6 +154,14 @@ _append_and_free (const char **s, const char *suffix)
    }
 }
 
+static void
+_truncate_if_needed (const char** s, uint32_t max_len) {
+   const char *tmp = *s;
+   if (strlen (*s) > max_len) {
+      *s = bson_strndup (*s, max_len);
+      bson_free ((char*)tmp);
+   }
+}
 
 void
 _build_metadata_doc_with_application (bson_t *doc,
@@ -155,6 +170,12 @@ _build_metadata_doc_with_application (bson_t *doc,
    uint32_t max_platform_str_size;
    uint32_t platform_len;
    char *platform_copy = NULL;
+
+   /* Todo: Add os.version, strip and if necessary */
+   if (application) {
+      BCON_APPEND (doc, "application", application);
+   }
+   BSON_ASSERT (doc->len < METADATA_MAX_SIZE);
 
    BCON_APPEND (doc,
                 "driver", "{",
@@ -170,21 +191,17 @@ _build_metadata_doc_with_application (bson_t *doc,
                 "version", BCON_UTF8 (STRING_OR_EMPTY (gMongocMetadata.os_version)),
                 "}");
 
-
-   if (application) {
-      BCON_APPEND (doc, "application", application);
-   }
-
    if (doc->len > METADATA_MAX_SIZE) {
-      /* FIXME: What to do here?*/
+      /* All of the fields we've added so far have been truncated to some
+         limit, so this should never happen. */
       MONGOC_ERROR ("Metadata is too big!");
+      abort ();
       return;
    }
 
    /* Try to add platform */
    max_platform_str_size = METADATA_MAX_SIZE -
       (doc->len +
-
        /* 1 byte for utf8 tag */
        1 +
 
@@ -193,6 +210,10 @@ _build_metadata_doc_with_application (bson_t *doc,
 
        /* 4 bytes for length of string */
        4);
+
+   /* need at least 1 byte for that null terminator, and all of the fields
+      above shouldn't add up to nearly 500 bytes */
+   BSON_ASSERT (max_platform_str_size > 0);
 
    platform_len = strlen (gMongocMetadata.platform);
    if (max_platform_str_size < platform_len) {
@@ -246,7 +267,12 @@ mongoc_set_client_metadata (const char *driver_name,
    }
 
    _append_and_free (&gMongocMetadata.driver_name, driver_name);
+   _truncate_if_needed (&gMongocMetadata.driver_name, METADATA_DRIVER_NAME_MAX);
+
    _append_and_free (&gMongocMetadata.driver_version, driver_version);
+   _truncate_if_needed (&gMongocMetadata.driver_version,
+                        METADATA_DRIVER_VERSION_MAX);
+
    _append_and_free (&gMongocMetadata.platform, platform);
 
    _mongoc_client_metadata_freeze ();

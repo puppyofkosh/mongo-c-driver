@@ -15,6 +15,14 @@
 
 #define METADATA_MAX_SIZE 512
 
+#define METADATA_OS_NAME_MAX 32
+#define METADATA_OS_VERSION_MAX 32
+#define METADATA_OS_ARCHITECTURE_MAX 32
+#define METADATA_DRIVER_NAME_MAX 64
+#define METADATA_DRIVER_VERSION_MAX 32
+/* platform has no fixed max size. It can just occupy the remaining
+   available space in the document. */
+
 
 typedef struct _mongoc_client_metadata_t
 {

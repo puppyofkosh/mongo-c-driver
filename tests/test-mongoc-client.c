@@ -1709,11 +1709,20 @@ _reset_metadata ()
 static void
 test_mongoc_client_global_metadata_success ()
 {
+   char big_string [METADATA_MAX_SIZE];
+   memset (big_string, 'a', METADATA_MAX_SIZE - 1);
+   big_string [METADATA_MAX_SIZE - 1] = '\0';
+
    _reset_metadata ();
 
    /* Make sure setting the metadata works */
    ASSERT (mongoc_set_client_metadata ("php driver", "version abc",
                                        "./configure -nottoomanyflags"));
+
+   _reset_metadata ();
+   /* Set each field to some really long string, which should
+      get truncated. We shouldn't fail or crash */
+   ASSERT (mongoc_set_client_metadata (big_string, big_string, big_string));
 }
 
 static void
