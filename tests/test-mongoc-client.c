@@ -1693,9 +1693,24 @@ test_ssl_reconnect_pooled (void)
 
 #endif
 
+/*
+ * Call this before any test which uses mongoc_set_client_metadata, to
+ * reset the global state and unfreeze the metadata struct.
+ *
+ * This is not safe to call while we have any clients or client pools running!
+ */
+static void
+_reset_metadata ()
+{
+   _mongoc_client_metadata_cleanup ();
+   _mongoc_client_metadata_init ();
+}
+
 static void
 test_mongoc_client_global_metadata_success ()
 {
+   _reset_metadata ();
+
    /* Make sure setting the metadata works */
    ASSERT (mongoc_set_client_metadata ("php driver", "version abc",
                                        "./configure -nottoomanyflags"));
@@ -1707,6 +1722,8 @@ test_mongoc_client_global_metadata_after_cmd ()
    mongoc_client_pool_t *pool;
    mongoc_client_t* client;
    mongoc_uri_t *uri;
+
+   _reset_metadata ();
 
    uri = mongoc_uri_new("mongodb://127.0.0.1?maxpoolsize=1&minpoolsize=1");
    pool = mongoc_client_pool_new(uri);
@@ -1741,6 +1758,8 @@ test_mongoc_client_global_metadata_too_big ()
    uint32_t len;
    const uint8_t* dummy;
 
+   _reset_metadata ();
+
    memset (big_string, 'a', BUFFER_SIZE -1);
    big_string[BUFFER_SIZE - 1] = '\0';
 
@@ -1767,11 +1786,9 @@ test_mongoc_client_global_metadata_too_big ()
    mongoc_client_destroy (client);
 }
 
-
 static void
 test_mongoc_client_application_metadata ()
 {
-
    enum {BUFFER_SIZE = METADATA_MAX_SIZE};
    char big_string[BUFFER_SIZE];
    const char* short_string = "hallo thar";

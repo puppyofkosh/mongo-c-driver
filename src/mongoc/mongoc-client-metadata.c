@@ -24,10 +24,10 @@ static char*
 _windows_get_version_string ()
 {
    /*
-      As new versions of windows are released, we'll have to add to this
-      See:
-      https://msdn.microsoft.com/en-us/library/windows/desktop/ms724832(v=vs.85).aspx
-      For windows names -> version # mapping
+     As new versions of windows are released, we'll have to add to this
+     See:
+     https://msdn.microsoft.com/en-us/library/windows/desktop/ms724832(v=vs.85).aspx
+     For windows names -> version # mapping
    */
 
    if (IsWindowsVersionOrGreater (10, 0, 0)) {
@@ -120,8 +120,8 @@ _mongoc_client_metadata_init ()
 
    /* TODO: CFLAGS=%s, MONGOC_CFLAGS */
    gMongocMetadata.platform = bson_strdup_printf ("CC=%s ./configure %s",
-                                             MONGOC_CC,
-                                             MONGOC_CONFIGURE_ARGS);
+                                                  MONGOC_CC,
+                                                  MONGOC_CONFIGURE_ARGS);
    gMongocMetadata.frozen = false;
 }
 
@@ -152,7 +152,6 @@ void
 _build_metadata_doc_with_application (bson_t *doc,
                                       const char *application)
 {
-
    uint32_t max_platform_str_size;
    uint32_t platform_len;
    char *platform_copy = NULL;
