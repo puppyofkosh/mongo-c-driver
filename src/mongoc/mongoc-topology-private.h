@@ -104,4 +104,9 @@ mongoc_topology_server_timestamp (mongoc_topology_t *topology,
 
 bool _mongoc_topology_start_background_scanner (mongoc_topology_t* topology);
 bool _mongoc_topology_is_scanner_active (mongoc_topology_t* topology);
+
+bool
+_mongoc_topology_set_scanner_application_metadata (mongoc_topology_t *topology,
+                                                   const char *application);
+
 #endif

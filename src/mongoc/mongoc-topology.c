@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include "mongoc-client-metadata.h"
 #include "mongoc-client-metadata-private.h"
 #include "mongoc-error.h"
 #include "mongoc-topology-private.h"
@@ -943,4 +944,26 @@ _mongoc_topology_background_thread_stop (mongoc_topology_t *topology)
       mongoc_thread_join (topology->thread);
       mongoc_cond_broadcast (&topology->cond_client);
    }
+}
+
+bool
+_mongoc_topology_set_scanner_application_metadata (mongoc_topology_t *topology,
+                                                   const char *application)
+{
+   if (_mongoc_topology_is_scanner_active (topology)) {
+      return false;
+   }
+
+   if (strlen (application) > MONGOC_METADATA_APPLICATION_NAME_MAX) {
+      return false;
+   }
+
+   if (topology->scanner->metadata_application != NULL) {
+      /* We've already set it */
+      return false;
+   }
+
+   topology->scanner->metadata_application = bson_strdup (application);
+
+   return true;
 }

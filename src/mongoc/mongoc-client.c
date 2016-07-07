@@ -23,7 +23,6 @@
 
 #include "mongoc-cursor-array-private.h"
 #include "mongoc-client-private.h"
-#include "mongoc-client-metadata-private.h"
 #include "mongoc-collection-private.h"
 #include "mongoc-config.h"
 #include "mongoc-counters-private.h"
@@ -1904,6 +1903,6 @@ mongoc_client_set_application (mongoc_client_t              *client,
       return false;
    }
 
-   return _mongoc_client_metadata_set_application (client->topology,
-                                                   application_name);
+   return _mongoc_topology_set_scanner_application_metadata (client->topology,
+                                                             application_name);
 }

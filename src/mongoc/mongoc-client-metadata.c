@@ -229,28 +229,6 @@ _build_metadata_doc_with_application (bson_t *doc,
    bson_free (platform_copy);
 }
 
-bool
-_mongoc_client_metadata_set_application (mongoc_topology_t *topology,
-                                         const char *application)
-{
-   if (_mongoc_topology_is_scanner_active (topology)) {
-      return false;
-   }
-
-   if (strlen (application) > MONGOC_METADATA_APPLICATION_NAME_MAX) {
-      return false;
-   }
-
-   if (topology->scanner->metadata_application != NULL) {
-      /* We've already set it */
-      return false;
-   }
-
-   topology->scanner->metadata_application = bson_strdup (application);
-
-   return true;
-}
-
 void
 _mongoc_client_metadata_freeze ()
 {

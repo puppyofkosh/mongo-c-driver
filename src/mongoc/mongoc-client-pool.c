@@ -21,7 +21,6 @@
 #include "mongoc-client-pool-private.h"
 #include "mongoc-client-pool.h"
 #include "mongoc-client-private.h"
-#include "mongoc-client-metadata-private.h"
 #include "mongoc-queue-private.h"
 #include "mongoc-thread-private.h"
 #include "mongoc-topology-private.h"
@@ -359,8 +358,8 @@ mongoc_client_pool_set_application (mongoc_client_pool_t   *pool,
    bool ret;
 
    mongoc_mutex_lock (&pool->mutex);
-   ret = _mongoc_client_metadata_set_application (pool->topology,
-                                                  application_name);
+   ret = _mongoc_topology_set_scanner_application_metadata (pool->topology,
+                                                            application_name);
    mongoc_mutex_unlock (&pool->mutex);
 
    return ret;
