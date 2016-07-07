@@ -47,7 +47,4 @@ bool _mongoc_client_metadata_set_metadata (const char *driver_name,
                                            const char *driver_version,
                                            const char *platform);
 
-bool
-_mongoc_client_metadata_set_application (mongoc_topology_t *topology,
-                                         const char *application);
 #endif
