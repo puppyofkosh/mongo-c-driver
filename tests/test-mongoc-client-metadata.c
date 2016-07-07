@@ -24,6 +24,7 @@ static void
 test_mongoc_client_global_metadata_success ()
 {
    char big_string [METADATA_MAX_SIZE];
+
    memset (big_string, 'a', METADATA_MAX_SIZE - 1);
    big_string [METADATA_MAX_SIZE - 1] = '\0';
 
@@ -35,7 +36,7 @@ test_mongoc_client_global_metadata_success ()
 
    _reset_metadata ();
    /* Set each field to some really long string, which should
-      get truncated. We shouldn't fail or crash */
+    * get truncated. We shouldn't fail or crash */
    ASSERT (mongoc_set_client_metadata (big_string, big_string, big_string));
 }
 
@@ -43,16 +44,16 @@ static void
 test_mongoc_client_global_metadata_after_cmd ()
 {
    mongoc_client_pool_t *pool;
-   mongoc_client_t* client;
+   mongoc_client_t *client;
    mongoc_uri_t *uri;
 
    _reset_metadata ();
 
-   uri = mongoc_uri_new("mongodb://127.0.0.1?maxpoolsize=1&minpoolsize=1");
-   pool = mongoc_client_pool_new(uri);
+   uri = mongoc_uri_new ("mongodb://127.0.0.1?maxpoolsize=1&minpoolsize=1");
+   pool = mongoc_client_pool_new (uri);
 
    /* Make sure that after we pop a client we can't set global metadata */
-   pool = mongoc_client_pool_new(uri);
+   pool = mongoc_client_pool_new (uri);
 
    client = mongoc_client_pool_pop (pool);
 
@@ -60,30 +61,31 @@ test_mongoc_client_global_metadata_after_cmd ()
 
    mongoc_client_pool_push (pool, client);
 
-   mongoc_uri_destroy(uri);
-   mongoc_client_pool_destroy(pool);
+   mongoc_uri_destroy (uri);
+   mongoc_client_pool_destroy (pool);
 }
 
 /*
-  Append to the platform field a huge string
-  Make sure that it gets truncated
-*/
+ * Append to the platform field a huge string
+ * Make sure that it gets truncated
+ */
 static void
 test_mongoc_client_global_metadata_too_big ()
 {
-   mongoc_client_t* client;
+   mongoc_client_t *client;
    bson_t *ismaster_doc;
    bson_iter_t iter;
    bson_error_t error;
-   enum {BUFFER_SIZE = METADATA_MAX_SIZE};
+
+   enum { BUFFER_SIZE = METADATA_MAX_SIZE };
    char big_string[BUFFER_SIZE];
    bool ret;
    uint32_t len;
-   const uint8_t* dummy;
+   const uint8_t *dummy;
 
    _reset_metadata ();
 
-   memset (big_string, 'a', BUFFER_SIZE -1);
+   memset (big_string, 'a', BUFFER_SIZE - 1);
    big_string[BUFFER_SIZE - 1] = '\0';
 
    ASSERT (mongoc_set_client_metadata (NULL, NULL, big_string));
@@ -112,7 +114,10 @@ test_mongoc_client_global_metadata_too_big ()
 void
 test_client_metadata_install (TestSuite *suite)
 {
-   TestSuite_Add (suite, "/ClientMetadata/success", test_mongoc_client_global_metadata_success);
-   TestSuite_Add (suite, "/ClientMetadata/failure", test_mongoc_client_global_metadata_after_cmd);
-   TestSuite_Add (suite, "/ClientMetadata/too_big", test_mongoc_client_global_metadata_too_big);
+   TestSuite_Add (suite, "/ClientMetadata/success",
+                  test_mongoc_client_global_metadata_success);
+   TestSuite_Add (suite, "/ClientMetadata/failure",
+                  test_mongoc_client_global_metadata_after_cmd);
+   TestSuite_Add (suite, "/ClientMetadata/too_big",
+                  test_mongoc_client_global_metadata_too_big);
 }

@@ -1696,12 +1696,12 @@ test_ssl_reconnect_pooled (void)
 static void
 test_mongoc_client_application_metadata ()
 {
-   enum {BUFFER_SIZE = METADATA_MAX_SIZE};
+   enum { BUFFER_SIZE = METADATA_MAX_SIZE };
    char big_string[BUFFER_SIZE];
-   const char* short_string = "hallo thar";
+   const char *short_string = "hallo thar";
    mongoc_client_t *client;
 
-   memset (big_string, 'a', BUFFER_SIZE -1);
+   memset (big_string, 'a', BUFFER_SIZE - 1);
    big_string[BUFFER_SIZE - 1] = '\0';
 
    client = test_framework_client_new ();
@@ -1727,15 +1727,15 @@ test_client_sends_metadata ()
    mongoc_client_t *client;
    mongoc_client_pool_t *pool;
    request_t *request;
-   const char * const server_reply = "{'ok': 1, 'ismaster': true}";
-   const bson_t* request_doc;
+   const char *const server_reply = "{'ok': 1, 'ismaster': true}";
+   const bson_t *request_doc;
    const int heartbeat_ms = 500;
 
    server = mock_server_new ();
    mock_server_run (server);
    uri = mongoc_uri_copy (mock_server_get_uri (server));
    mongoc_uri_set_option_as_int32 (uri, "heartbeatFrequencyMS", heartbeat_ms);
-   pool = mongoc_client_pool_new(uri);
+   pool = mongoc_client_pool_new (uri);
 
    /* Pop a client to trigger the topology scanner */
    client = mongoc_client_pool_pop (pool);

@@ -167,7 +167,8 @@ mongoc_client_pool_destroy (mongoc_client_pool_t *pool)
   This function assumes the pool's mutex is locked
 */
 static void
-_start_scanner_if_needed (mongoc_client_pool_t *pool) {
+_start_scanner_if_needed (mongoc_client_pool_t *pool)
+{
    if (!_mongoc_topology_is_scanner_active (pool->topology)) {
       if (!_mongoc_topology_start_background_scanner (pool->topology)) {
          MONGOC_ERROR ("Background scanner did not start!");

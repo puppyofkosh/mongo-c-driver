@@ -45,15 +45,15 @@ mongoc_topology_scanner_ismaster_handler (mongoc_async_cmd_result_t async_status
                                           bson_error_t             *error);
 
 static void
-_add_ismaster (bson_t* cmd)
+_add_ismaster (bson_t *cmd)
 {
    BSON_APPEND_INT32 (cmd, "isMaster", 1);
 }
 
 static void
-_build_ismaster_with_metadata (mongoc_topology_scanner_t* ts)
+_build_ismaster_with_metadata (mongoc_topology_scanner_t *ts)
 {
-   bson_t* doc = &ts->ismaster_cmd_with_metadata;
+   bson_t *doc = &ts->ismaster_cmd_with_metadata;
    bson_t metadata_doc;
 
    _add_ismaster (doc);
@@ -64,30 +64,32 @@ _build_ismaster_with_metadata (mongoc_topology_scanner_t* ts)
    bson_append_document_end (doc, &metadata_doc);
 }
 
-static bson_t*
-_get_ismaster_doc (mongoc_topology_scanner_t *ts,
-                   mongoc_topology_scanner_node_t *node) {
+static bson_t *
+_get_ismaster_doc (mongoc_topology_scanner_t      *ts,
+                   mongoc_topology_scanner_node_t *node)
+{
    if (node->last_used == -1 || node->last_failed != -1) {
       /* If this is the first time using the node or if it's the first time
-         using it after a failure, resend metadata */
+       * using it after a failure, resend metadata */
       if (bson_empty (&ts->ismaster_cmd_with_metadata)) {
          _build_ismaster_with_metadata (ts);
       }
 
       return &ts->ismaster_cmd_with_metadata;
    }
+
    return &ts->ismaster_cmd;
 }
 
 /* Decides whether or not to include the metadata and sends isMaster
-   to given node. If it decides to send the metadata, it puts the isMaster
-   command in the given buffer. This function can be called repeatedly
-   with the same buffer argument to avoid rebuilding the isMaster command
-   more than once */
+ * to given node. If it decides to send the metadata, it puts the isMaster
+ * command in the given buffer. This function can be called repeatedly
+ * with the same buffer argument to avoid rebuilding the isMaster command
+ * more than once */
 static void
-_send_ismaster_cmd (mongoc_topology_scanner_t *ts,
+_send_ismaster_cmd (mongoc_topology_scanner_t      *ts,
                     mongoc_topology_scanner_node_t *node,
-                    int32_t timeout_msec)
+                    int32_t                         timeout_msec)
 {
    const bson_t *ismaster_cmd_to_send = _get_ismaster_doc (ts, node);
 
@@ -154,7 +156,7 @@ mongoc_topology_scanner_destroy (mongoc_topology_scanner_t *ts)
    bson_destroy (&ts->ismaster_cmd);
 
    /* This field can be set by a mongoc_client */
-   bson_free ((char*)ts->metadata_application);
+   bson_free ((char *) ts->metadata_application);
 
    bson_free (ts);
 }
