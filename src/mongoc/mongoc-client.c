@@ -21,7 +21,6 @@
 # include <netinet/tcp.h>
 #endif
 
-
 #include "mongoc-cursor-array-private.h"
 #include "mongoc-client-private.h"
 #include "mongoc-client-metadata-private.h"
@@ -742,8 +741,6 @@ _mongoc_client_new_from_uri (const mongoc_uri_t *uri, mongoc_topology_t *topolog
    client->initiator = mongoc_client_default_stream_initiator;
    client->initiator_data = client;
    client->topology = topology;
-
-
    client->error_api_version = MONGOC_ERROR_API_VERSION_LEGACY;
    client->error_api_set = false;
 

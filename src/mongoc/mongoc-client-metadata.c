@@ -6,39 +6,22 @@
 #include "mongoc-version.h"
 #include "mongoc-log.h"
 
-#ifndef _WIN32
-#include <sys/utsname.h>
-#else
+#ifdef _WIN32
 #include <windows.h>
 #include <stdio.h>
 #include <VersionHelpers.h>
+#else
+#include <sys/utsname.h>
 #endif
 
 #define STRING_OR_EMPTY(s) ((s) != NULL ? (s) : "")
 
-static mongoc_client_metadata_t g_metadata;
+static mongoc_client_metadata_t gMongocMetadata;
 
 
-#ifndef _WIN32
-static void _get_system_info (const char** name, const char** architecture,
-                              const char** version)
-{
-   struct utsname system_info;
-   int res;
-
-   res = uname (&system_info);
-
-   if (res != 0) {
-      MONGOC_ERROR ("Uname failed with error %d", errno);
-      return;
-   }
-
-   *name = bson_strdup (system_info.sysname);
-   *architecture = bson_strdup (system_info.machine);
-   *version = bson_strdup (system_info.release);
-}
-#else
-static char* _windows_get_version_string ()
+#ifdef _WIN32
+static char*
+_windows_get_version_string ()
 {
    /*
       As new versions of windows are released, we'll have to add to this
@@ -70,7 +53,8 @@ static char* _windows_get_version_string ()
    return bson_strdup ("Pre Windows XP");
 }
 
-static char* _windows_get_arch_string ()
+static char*
+_windows_get_arch_string ()
 {
    SYSTEM_INFO system_info;
    DWORD arch;
@@ -88,7 +72,7 @@ static char* _windows_get_arch_string ()
    } else if (arch == PROCESSOR_ARCHITECTURE_INTEL) {
       return bson_strdup ("x86");
    } else if (arch == PROCESSOR_ARCHITECTURE_UNKNOWN) {
-      return bson_strdup ("Unkown");
+      return bson_strdup ("Unknown");
    }
 
    MONGOC_ERROR ("Processor architecture lookup failed");
@@ -96,44 +80,66 @@ static char* _windows_get_arch_string ()
    return NULL;
 }
 
-static void _get_system_info (const char** name, const char** architecture,
-                              const char** version)
+static void
+_get_system_info (mongoc_client_metadata_t *metadata)
 {
    const char* result_str;
 
-   *name = bson_strdup ("Windows");
-   *version = windows_get_version_string ();
-   *architecture = windows_get_arch_string ();
+   metadata->os_name = bson_strdup ("Windows");
+   metadata->os_version = windows_get_version_string ();
+   metadata->os_architecture = windows_get_arch_string ();
+}
+#else
+static void
+_get_system_info (mongoc_client_metadata_t *metadata)
+{
+   struct utsname system_info;
+   int res;
+
+   res = uname (&system_info);
+
+   if (res != 0) {
+      MONGOC_ERROR ("Uname failed with error %d", errno);
+      return;
+   }
+
+   metadata->os_name = bson_strdup (system_info.sysname);
+   metadata->os_architecture = bson_strdup (system_info.machine);
+   metadata->os_version = bson_strdup (system_info.release);
 }
 #endif
 
-void _mongoc_client_metadata_init () {
+void
+_mongoc_client_metadata_init ()
+{
    /* Do OS detection here */
-   _get_system_info (&g_metadata.os_version,
-                     &g_metadata.os_name,
-                     &g_metadata.architecture);
+   _get_system_info (&gMongocMetadata);
 
-   g_metadata.driver_name = bson_strdup ("mongoc");
-   g_metadata.driver_version = bson_strdup (MONGOC_VERSION_S);
+   gMongocMetadata.driver_name = bson_strdup ("mongoc");
+   gMongocMetadata.driver_version = bson_strdup (MONGOC_VERSION_S);
 
    /* TODO: CFLAGS=%s, MONGOC_CFLAGS */
-   g_metadata.platform = bson_strdup_printf ("CC=%s ./configure %s",
+   gMongocMetadata.platform = bson_strdup_printf ("CC=%s ./configure %s",
                                              MONGOC_CC,
                                              MONGOC_CONFIGURE_ARGS);
-   g_metadata.frozen = false;
+   gMongocMetadata.frozen = false;
 }
 
-void _mongoc_client_metadata_cleanup () {
-   bson_free ((char*)g_metadata.os_version);
-   bson_free ((char*)g_metadata.os_name);
-   bson_free ((char*)g_metadata.architecture);
+void
+_mongoc_client_metadata_cleanup ()
+{
+   bson_free ((char*)gMongocMetadata.os_version);
+   bson_free ((char*)gMongocMetadata.os_name);
+   bson_free ((char*)gMongocMetadata.os_architecture);
 
-   bson_free ((char*)g_metadata.driver_name);
-   bson_free ((char*)g_metadata.driver_version);
-   bson_free ((char*)g_metadata.platform);
+   bson_free ((char*)gMongocMetadata.driver_name);
+   bson_free ((char*)gMongocMetadata.driver_version);
+   bson_free ((char*)gMongocMetadata.platform);
 }
 
-static void _append_and_free (const char** s, const char* suffix) {
+static void
+_append_and_free (const char **s, const char *suffix)
+{
    const char* tmp = *s;
    if (suffix) {
       *s = bson_strdup_printf ("%s / %s", tmp, suffix);
@@ -142,8 +148,10 @@ static void _append_and_free (const char** s, const char* suffix) {
 }
 
 
-void _build_metadata_doc_with_application (bson_t* doc,
-                                           const char* application) {
+void
+_build_metadata_doc_with_application (bson_t *doc,
+                                      const char *application)
+{
 
    uint32_t max_platform_str_size;
    uint32_t platform_len;
@@ -151,16 +159,16 @@ void _build_metadata_doc_with_application (bson_t* doc,
 
    BCON_APPEND (doc,
                 "driver", "{",
-                "name", g_metadata.driver_name,
-                "version", g_metadata.driver_version,
+                "name", gMongocMetadata.driver_name,
+                "version", gMongocMetadata.driver_version,
                 "}");
 
    BCON_APPEND (doc,
                 "os", "{",
-                "name", BCON_UTF8 (STRING_OR_EMPTY (g_metadata.os_name)),
+                "name", BCON_UTF8 (STRING_OR_EMPTY (gMongocMetadata.os_name)),
                 "architecture",
-                BCON_UTF8 (STRING_OR_EMPTY (g_metadata.architecture)),
-                "version", BCON_UTF8 (STRING_OR_EMPTY (g_metadata.os_version)),
+                BCON_UTF8 (STRING_OR_EMPTY (gMongocMetadata.os_architecture)),
+                "version", BCON_UTF8 (STRING_OR_EMPTY (gMongocMetadata.os_version)),
                 "}");
 
 
@@ -187,9 +195,9 @@ void _build_metadata_doc_with_application (bson_t* doc,
        /* 4 bytes for length of string */
        4);
 
-   platform_len = strlen (g_metadata.platform);
+   platform_len = strlen (gMongocMetadata.platform);
    if (max_platform_str_size < platform_len) {
-      platform_copy = bson_strndup (g_metadata.platform,
+      platform_copy = bson_strndup (gMongocMetadata.platform,
                                     max_platform_str_size - 1);
       BSON_ASSERT (strlen (platform_copy) <= max_platform_str_size);
    }
@@ -197,18 +205,19 @@ void _build_metadata_doc_with_application (bson_t* doc,
    BCON_APPEND (doc,
                 METADATA_PLATFORM_FIELD,
                 BCON_UTF8 ((platform_copy ? platform_copy :
-                            g_metadata.platform)));
+                            gMongocMetadata.platform)));
    bson_free (platform_copy);
 }
 
 bool
 _mongoc_client_metadata_set_application (mongoc_topology_t *topology,
-                                         const char *application) {
+                                         const char *application)
+{
    if (_mongoc_topology_is_scanner_active (topology)) {
       return false;
    }
 
-   if (strlen (application) > MONGOC_METADATA_APPLICATION_NAME_MAX_LENGTH) {
+   if (strlen (application) > MONGOC_METADATA_APPLICATION_NAME_MAX) {
       return false;
    }
 
@@ -222,21 +231,25 @@ _mongoc_client_metadata_set_application (mongoc_topology_t *topology,
    return true;
 }
 
-void _mongoc_client_metadata_freeze () {
-   g_metadata.frozen = true;
+void
+_mongoc_client_metadata_freeze ()
+{
+   gMongocMetadata.frozen = true;
 }
 
-bool mongoc_set_client_metadata (const char *driver_name,
-                                 const char *driver_version,
-                                 const char *platform) {
-   if (g_metadata.frozen) {
+bool
+mongoc_set_client_metadata (const char *driver_name,
+                            const char *driver_version,
+                            const char *platform)
+{
+   if (gMongocMetadata.frozen) {
       return false;
    }
 
-   _append_and_free (&g_metadata.driver_name, driver_name);
-   _append_and_free (&g_metadata.driver_version, driver_version);
-   _append_and_free (&g_metadata.platform, platform);
+   _append_and_free (&gMongocMetadata.driver_name, driver_name);
+   _append_and_free (&gMongocMetadata.driver_version, driver_version);
+   _append_and_free (&gMongocMetadata.platform, platform);
 
-   g_metadata.frozen = true;
+   _mongoc_client_metadata_freeze ();
    return true;
 }

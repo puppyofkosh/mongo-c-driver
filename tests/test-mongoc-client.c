@@ -1694,14 +1694,16 @@ test_ssl_reconnect_pooled (void)
 #endif
 
 static void
-test_mongoc_client_global_metadata_success () {
+test_mongoc_client_global_metadata_success ()
+{
    /* Make sure setting the metadata works */
    ASSERT (mongoc_set_client_metadata ("php driver", "version abc",
                                        "./configure -nottoomanyflags"));
 }
 
 static void
-test_mongoc_client_global_metadata_after_cmd () {
+test_mongoc_client_global_metadata_after_cmd ()
+{
    mongoc_client_pool_t *pool;
    mongoc_client_t* client;
    mongoc_uri_t *uri;
@@ -1727,7 +1729,8 @@ test_mongoc_client_global_metadata_after_cmd () {
   Make sure that it gets truncated
 */
 static void
-test_mongoc_client_global_metadata_too_big () {
+test_mongoc_client_global_metadata_too_big ()
+{
    mongoc_client_t* client;
    bson_t *ismaster_doc;
    bson_iter_t iter;
@@ -1793,7 +1796,8 @@ test_mongoc_client_application_metadata ()
 }
 
 static void
-test_client_sends_metadata () {
+test_client_sends_metadata ()
+{
    mock_server_t *server;
    mongoc_uri_t *uri;
    mongoc_client_t *client;

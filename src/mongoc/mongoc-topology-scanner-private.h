@@ -51,7 +51,6 @@ typedef struct mongoc_topology_scanner_node
    int64_t                         last_used;
    int64_t                         last_failed;
    bool                            has_auth;
-
    mongoc_host_list_t              host;
    struct addrinfo                *dns_results;
    struct addrinfo                *current_dns_result;
@@ -150,6 +149,7 @@ void
 mongoc_topology_scanner_set_stream_initiator (mongoc_topology_scanner_t *ts,
                                               mongoc_stream_initiator_t  si,
                                               void                      *ctx);
+
 #ifdef MONGOC_ENABLE_SSL
 void
 mongoc_topology_scanner_set_ssl_opts (mongoc_topology_scanner_t *ts,

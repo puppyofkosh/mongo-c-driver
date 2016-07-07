@@ -18,9 +18,9 @@
 
 typedef struct _mongoc_client_metadata_t
 {
-   const char *os_version;
    const char *os_name;
-   const char *architecture;
+   const char *os_version;
+   const char *os_architecture;
 
    const char *driver_name;
    const char *driver_version;

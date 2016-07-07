@@ -11,6 +11,4 @@ bool mongoc_set_client_metadata (const char *driver_name,
                                  const char *driver_version,
                                  const char *platform);
 
-#define MONGOC_METADATA_APPLICATION_NAME_MAX_LENGTH 128
-
 #endif

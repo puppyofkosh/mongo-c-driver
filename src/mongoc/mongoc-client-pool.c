@@ -357,7 +357,6 @@ mongoc_client_pool_set_application (mongoc_client_pool_t   *pool,
                                     const char             *application_name)
 {
    bool ret;
-   bson_t* metadata;
 
    mongoc_mutex_lock (&pool->mutex);
    ret = _mongoc_client_metadata_set_application (pool->topology,

@@ -34,15 +34,6 @@
 #include "mongoc-topology-private.h"
 #include "mongoc-host-list-private.h"
 
-#ifndef _WIN32
-#include <sys/utsname.h>
-#else
-#include <windows.h>
-#include <stdio.h>
-#include <VersionHelpers.h>
-#endif
-
-
 #undef MONGOC_LOG_DOMAIN
 #define MONGOC_LOG_DOMAIN "topology_scanner"
 
@@ -53,23 +44,39 @@ mongoc_topology_scanner_ismaster_handler (mongoc_async_cmd_result_t async_status
                                           void                     *data,
                                           bson_error_t             *error);
 
-static void _add_ismaster (bson_t* cmd) {
+static void
+_add_ismaster (bson_t* cmd)
+{
    BSON_APPEND_INT32 (cmd, "isMaster", 1);
 }
 
-static void _build_ismaster_with_metadata (mongoc_topology_scanner_t* ts) {
+static void
+_build_ismaster_with_metadata (mongoc_topology_scanner_t* ts)
+{
    bson_t* doc = &ts->ismaster_cmd_with_metadata;
-   bson_t metadata_doc = BSON_INITIALIZER;
+   bson_t metadata_doc;
 
    _add_ismaster (doc);
 
+   BSON_APPEND_DOCUMENT_BEGIN (doc, METADATA_FIELD, &metadata_doc);
    _build_metadata_doc_with_application (&metadata_doc,
                                          ts->metadata_application);
-   BSON_APPEND_DOCUMENT (doc,
-                         METADATA_FIELD,
-                         &metadata_doc);
+   bson_append_document_end (doc, &metadata_doc);
+}
 
-   bson_destroy (&metadata_doc);
+static bson_t*
+_get_ismaster_doc (mongoc_topology_scanner_t *ts,
+                   mongoc_topology_scanner_node_t *node) {
+   if (node->last_used == -1 || node->last_failed != -1) {
+      /* If this is the first time using the node or if it's the first time
+         using it after a failure, resend metadata */
+      if (bson_empty (&ts->ismaster_cmd_with_metadata)) {
+         _build_ismaster_with_metadata (ts);
+      }
+
+      return &ts->ismaster_cmd_with_metadata;
+   }
+   return &ts->ismaster_cmd;
 }
 
 /* Decides whether or not to include the metadata and sends isMaster
@@ -80,17 +87,9 @@ static void _build_ismaster_with_metadata (mongoc_topology_scanner_t* ts) {
 static void
 _send_ismaster_cmd (mongoc_topology_scanner_t *ts,
                     mongoc_topology_scanner_node_t *node,
-                    int32_t timeout_msec) {
-   const bson_t *ismaster_cmd_to_send = &ts->ismaster_cmd;
-
-   if (node->last_used == -1 || node->last_failed != -1) {
-      /* If this is the first time using the node or if it's the first time
-         using it after a failure, resend metadata */
-      if (bson_empty (&ts->ismaster_cmd_with_metadata)) {
-         _build_ismaster_with_metadata (ts);
-      }
-      ismaster_cmd_to_send = &ts->ismaster_cmd_with_metadata;
-   }
+                    int32_t timeout_msec)
+{
+   const bson_t *ismaster_cmd_to_send = _get_ismaster_doc (ts, node);
 
    node->cmd = mongoc_async_cmd (
       ts->async, node->stream, ts->setup,
