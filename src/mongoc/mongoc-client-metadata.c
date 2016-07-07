@@ -20,23 +20,23 @@ static mongoc_client_metadata_t gMongocMetadata;
 
 
 #ifdef _WIN32
-static char*
+static char *
 _windows_get_version_string ()
 {
    /*
-     As new versions of windows are released, we'll have to add to this
-     See:
-     https://msdn.microsoft.com/en-us/library/windows/desktop/ms724832(v=vs.85).aspx
-     For windows names -> version # mapping
-   */
+    * As new versions of windows are released, we'll have to add to this
+    * See:
+    * https://msdn.microsoft.com/en-us/library/windows/desktop/ms724832(v=vs.85).aspx
+    * For windows names -> version # mapping
+    */
 
    if (IsWindowsVersionOrGreater (10, 0, 0)) {
       /* No IsWindows10OrGreater () function available with this version of
-         MSVC */
+       * MSVC */
       return bson_strdup (">= Windows 10");
    } else if (IsWindowsVersionOrGreater (6, 3, 0)) {
       /* No IsWindows8Point10OrGreater() function available with this version
-         of MSVC */
+       * of MSVC */
       return bson_strdup ("Windows 8.1");
    } else if (IsWindows8OrGreater ()) {
       return bson_strdup ("Windows 8");
@@ -53,16 +53,17 @@ _windows_get_version_string ()
    return bson_strdup ("Pre Windows XP");
 }
 
-static char*
+static char *
 _windows_get_arch_string ()
 {
    SYSTEM_INFO system_info;
    DWORD arch;
 
    /* doesn't return anything */
-   GetSystemInfo(&system_info);
+   GetSystemInfo (&system_info);
 
    arch = system_info.wProcessorArchitecture;
+
    if (arch == PROCESSOR_ARCHITECTURE_AMD64) {
       return bson_strdup ("x86_64");
    } else if (arch == PROCESSOR_ARCHITECTURE_ARM) {
@@ -83,7 +84,7 @@ _windows_get_arch_string ()
 static void
 _get_system_info (mongoc_client_metadata_t *metadata)
 {
-   const char* result_str;
+   const char *result_str;
 
    metadata->os_name = bson_strdup ("Windows");
    metadata->os_version = windows_get_version_string ();
@@ -114,7 +115,7 @@ _get_system_info (mongoc_client_metadata_t *meta)
 void
 _mongoc_client_metadata_init ()
 {
-   const char* driver_name = "mongoc";
+   const char *driver_name = "mongoc";
 
    /* Do OS detection here */
    _get_system_info (&gMongocMetadata);
@@ -135,36 +136,41 @@ _mongoc_client_metadata_init ()
 void
 _mongoc_client_metadata_cleanup ()
 {
-   bson_free ((char*)gMongocMetadata.os_version);
-   bson_free ((char*)gMongocMetadata.os_name);
-   bson_free ((char*)gMongocMetadata.os_architecture);
+   bson_free ((char *) gMongocMetadata.os_version);
+   bson_free ((char *) gMongocMetadata.os_name);
+   bson_free ((char *) gMongocMetadata.os_architecture);
 
-   bson_free ((char*)gMongocMetadata.driver_name);
-   bson_free ((char*)gMongocMetadata.driver_version);
-   bson_free ((char*)gMongocMetadata.platform);
+   bson_free ((char *) gMongocMetadata.driver_name);
+   bson_free ((char *) gMongocMetadata.driver_version);
+   bson_free ((char *) gMongocMetadata.platform);
 }
 
 static void
-_append_and_free (const char **s, const char *suffix)
+_append_and_free (const char **s,
+                  const char  *suffix)
 {
-   const char* tmp = *s;
+   const char *tmp = *s;
+
    if (suffix) {
       *s = bson_strdup_printf ("%s / %s", tmp, suffix);
-      bson_free ((char*)tmp);
+      bson_free ((char *) tmp);
    }
 }
 
 static void
-_truncate_if_needed (const char** s, uint32_t max_len) {
+_truncate_if_needed (const char **s,
+                     uint32_t     max_len)
+{
    const char *tmp = *s;
+
    if (strlen (*s) > max_len) {
       *s = bson_strndup (*s, max_len);
-      bson_free ((char*)tmp);
+      bson_free ((char *) tmp);
    }
 }
 
 void
-_build_metadata_doc_with_application (bson_t *doc,
+_build_metadata_doc_with_application (bson_t     *doc,
                                       const char *application)
 {
    uint32_t max_platform_str_size;
@@ -175,6 +181,7 @@ _build_metadata_doc_with_application (bson_t *doc,
    if (application) {
       BCON_APPEND (doc, "application", application);
    }
+
    BSON_ASSERT (doc->len < METADATA_MAX_SIZE);
 
    BCON_APPEND (doc,
@@ -188,12 +195,13 @@ _build_metadata_doc_with_application (bson_t *doc,
                 "name", BCON_UTF8 (STRING_OR_EMPTY (gMongocMetadata.os_name)),
                 "architecture",
                 BCON_UTF8 (STRING_OR_EMPTY (gMongocMetadata.os_architecture)),
-                "version", BCON_UTF8 (STRING_OR_EMPTY (gMongocMetadata.os_version)),
+                "version",
+                BCON_UTF8 (STRING_OR_EMPTY (gMongocMetadata.os_version)),
                 "}");
 
    if (doc->len > METADATA_MAX_SIZE) {
       /* All of the fields we've added so far have been truncated to some
-         limit, so this should never happen. */
+       * limit, so this should never happen. */
       MONGOC_ERROR ("Metadata is too big!");
       abort ();
       return;
@@ -201,21 +209,22 @@ _build_metadata_doc_with_application (bson_t *doc,
 
    /* Try to add platform */
    max_platform_str_size = METADATA_MAX_SIZE -
-      (doc->len +
-       /* 1 byte for utf8 tag */
-       1 +
+                           (doc->len +
+                            /* 1 byte for utf8 tag */
+                            1 +
 
-       /* key size */
-       (uint32_t)strlen (METADATA_PLATFORM_FIELD) + 1 +
+                            /* key size */
+                            (uint32_t) strlen (METADATA_PLATFORM_FIELD) + 1 +
 
-       /* 4 bytes for length of string */
-       4);
+                            /* 4 bytes for length of string */
+                            4);
 
    /* need at least 1 byte for that null terminator, and all of the fields
-      above shouldn't add up to nearly 500 bytes */
+    * above shouldn't add up to nearly 500 bytes */
    BSON_ASSERT (max_platform_str_size > 0);
 
    platform_len = strlen (gMongocMetadata.platform);
+
    if (max_platform_str_size < platform_len) {
       platform_copy = bson_strndup (gMongocMetadata.platform,
                                     max_platform_str_size - 1);
