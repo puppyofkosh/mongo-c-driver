@@ -38,6 +38,7 @@ typedef enum
    MONGOC_MD_FLAG_HAVE_SASL_CLIENT_DONE        = 1 << 10,
    MONGOC_MD_FLAG_HAVE_WEAK_SYMBOLS            = 1 << 11,
    MONGOC_MD_FLAG_NO_AUTOMATIC_GLOBALS         = 1 << 12,
+   MONGOC_MD_FLAG_BSON_BUNDLED                 = 1 << 13,
 } mongoc_metadata_config_flags_t;
 
 

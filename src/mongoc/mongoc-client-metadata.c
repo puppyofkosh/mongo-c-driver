@@ -75,6 +75,10 @@ get_config_bitfield ()
    bf |= MONGOC_MD_FLAG_NO_AUTOMATIC_GLOBALS;
 #endif
 
+#ifdef MONGOC_BSON_BUNDLED
+   bf |= MONGOC_MD_FLAG_BSON_BUNDLED;
+#endif
+
    return bf;
 }
 
@@ -200,12 +204,13 @@ _mongoc_client_metadata_init ()
    BSON_ASSERT (strlen (MONGOC_VERSION_S) < METADATA_DRIVER_NAME_MAX);
    gMongocMetadata.driver_version = bson_strdup (MONGOC_VERSION_S);
 
-   /* TODO: CFLAGS=%s, MONGOC_CFLAGS */
    gMongocMetadata.platform = bson_strdup_printf (
-      "cfgbits 0x%x CC=%s CFLAGS=%s",
+      "cfgbits 0x%x CC=%s CFLAGS=%s SSL_CFLAGS=%s SSL_LIBS=%s",
       get_config_bitfield (),
       MONGOC_CC,
-      MONGOC_CFLAGS);
+      MONGOC_CFLAGS,
+      MONGOC_SSL_CFLAGS,
+      MONGOC_SSL_LIBS);
 
    gMongocMetadata.frozen = false;
 }
