@@ -83,6 +83,7 @@ get_config_bitfield ()
 static char *
 _windows_get_version_string ()
 {
+   const char *ret;
    /*
     * As new versions of windows are released, we'll have to add to this
     * See:
@@ -93,24 +94,26 @@ _windows_get_version_string ()
    if (IsWindowsVersionOrGreater (10, 0, 0)) {
       /* No IsWindows10OrGreater () function available with this version of
        * MSVC */
-      return bson_strdup (">= Windows 10");
+      ret = ">= 10";
    } else if (IsWindowsVersionOrGreater (6, 3, 0)) {
       /* No IsWindows8Point10OrGreater() function available with this version
        * of MSVC */
-      return bson_strdup ("Windows 8.1");
+      ret = "8.1";
    } else if (IsWindows8OrGreater ()) {
-      return bson_strdup ("Windows 8");
+      ret = "8";
    } else if (IsWindows7SP1OrGreater ()) {
-      return bson_strdup ("Windows 7.1");
+      ret = "7.1";
    } else if (IsWindows7OrGreater ()) {
-      return bson_strdup ("Windows 7");
+      ret = "7";
    } else if (IsWindowsVistaOrGreater ()) {
-      return bson_strdup ("Windows Vista");
+      ret = "Vista";
    } else if (IsWindowsXPOrGreater ()) {
-      return bson_strdup ("Windows XP");
+      ret = "XP";
+   } else {
+      ret = "Pre XP";
    }
 
-   return bson_strdup ("Pre Windows XP");
+   return bson_strndup (ret, METADATA_OS_VERSION_MAX);
 }
 
 static char *
@@ -118,6 +121,7 @@ _windows_get_arch_string ()
 {
    SYSTEM_INFO system_info;
    DWORD arch;
+   const char *ret;
 
    /* doesn't return anything */
    GetSystemInfo (&system_info);
@@ -125,19 +129,22 @@ _windows_get_arch_string ()
    arch = system_info.wProcessorArchitecture;
 
    if (arch == PROCESSOR_ARCHITECTURE_AMD64) {
-      return bson_strdup ("x86_64");
+      ret = "x86_64";
    } else if (arch == PROCESSOR_ARCHITECTURE_ARM) {
-      return bson_strdup ("ARM");
+      ret = "ARM";
    } else if (arch == PROCESSOR_ARCHITECTURE_IA64) {
-      return bson_strdup ("IA64");
+      ret = "IA64";
    } else if (arch == PROCESSOR_ARCHITECTURE_INTEL) {
-      return bson_strdup ("x86");
+      ret = "x86";
    } else if (arch == PROCESSOR_ARCHITECTURE_UNKNOWN) {
-      return bson_strdup ("Unknown");
+      ret = "Unknown";
+   }
+
+   if (ret) {
+      return bson_strndup (ret, METADATA_OS_ARCHITECTURE_MAX);
    }
 
    MONGOC_ERROR ("Processor architecture lookup failed");
-
    return NULL;
 }
 
@@ -146,9 +153,9 @@ _get_system_info (mongoc_client_metadata_t *metadata)
 {
    const char *result_str;
 
-   metadata->os_name = bson_strdup ("Windows");
-   metadata->os_version = windows_get_version_string ();
-   metadata->os_architecture = windows_get_arch_string ();
+   metadata->os_name = bson_strndup ("Windows", METADATA_OS_NAME_MAX);
+   metadata->os_version = _windows_get_version_string ();
+   metadata->os_architecture = _windows_get_arch_string ();
 }
 #else
 static void
@@ -171,6 +178,13 @@ _get_system_info (mongoc_client_metadata_t *meta)
                                     METADATA_OS_VERSION_MAX);
 }
 #endif
+
+static void
+_free_system_info (mongoc_client_metadata_t *meta) {
+   bson_free ((char *) meta->os_version);
+   bson_free ((char *) meta->os_name);
+   bson_free ((char *) meta->os_architecture);
+}
 
 void
 _mongoc_client_metadata_init ()
@@ -199,10 +213,7 @@ _mongoc_client_metadata_init ()
 void
 _mongoc_client_metadata_cleanup ()
 {
-   bson_free ((char *) gMongocMetadata.os_version);
-   bson_free ((char *) gMongocMetadata.os_name);
-   bson_free ((char *) gMongocMetadata.os_architecture);
-
+   _free_system_info (&gMongocMetadata);
    bson_free ((char *) gMongocMetadata.driver_name);
    bson_free ((char *) gMongocMetadata.driver_version);
    bson_free ((char *) gMongocMetadata.platform);
@@ -216,18 +227,6 @@ _append_and_free (const char **s,
 
    if (suffix) {
       *s = bson_strdup_printf ("%s / %s", tmp, suffix);
-      bson_free ((char *) tmp);
-   }
-}
-
-static void
-_truncate_if_needed (const char **s,
-                     uint32_t     max_len)
-{
-   const char *tmp = *s;
-
-   if (strlen (*s) > max_len) {
-      *s = bson_strndup (*s, max_len);
       bson_free ((char *) tmp);
    }
 }
@@ -302,6 +301,18 @@ void
 _mongoc_client_metadata_freeze ()
 {
    gMongocMetadata.frozen = true;
+}
+
+static void
+_truncate_if_needed (const char **s,
+                     uint32_t     max_len)
+{
+   const char *tmp = *s;
+
+   if (strlen (*s) > max_len) {
+      *s = bson_strndup (*s, max_len);
+      bson_free ((char *) tmp);
+   }
 }
 
 bool
