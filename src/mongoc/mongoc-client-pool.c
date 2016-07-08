@@ -46,7 +46,6 @@ struct _mongoc_client_pool_t
 #endif
    mongoc_apm_callbacks_t  apm_callbacks;
    void                   *apm_context;
-
    int32_t                 error_api_version;
 };
 

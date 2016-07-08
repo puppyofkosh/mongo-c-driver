@@ -1,10 +1,29 @@
+/*
+ * Copyright 2016 MongoDB, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
 #include "mongoc-client-metadata.h"
 #include "mongoc-client-metadata-private.h"
 #include "mongoc-client.h"
 #include "mongoc-client-private.h"
 #include "mongoc-error.h"
-#include "mongoc-version.h"
 #include "mongoc-log.h"
+#include "mongoc-version.h"
+#include "mongoc-util-private.h"
+
 
 #ifdef _WIN32
 #include <windows.h>
@@ -14,8 +33,11 @@
 #include <sys/utsname.h>
 #endif
 
-#define STRING_OR_EMPTY(s) ((s) != NULL ? (s) : "")
-
+/*
+ * Global metadata instance. Initialized at startup from mongoc_init ()
+ *
+ * Can be modified by calls to mongoc_set_metadata ()
+ */
 static mongoc_client_metadata_t gMongocMetadata;
 
 static uint32_t
@@ -155,8 +177,6 @@ _windows_get_arch_string ()
 static void
 _get_system_info (mongoc_client_metadata_t *metadata)
 {
-   const char *result_str;
-
    metadata->os_name = bson_strndup ("Windows", METADATA_OS_NAME_MAX);
    metadata->os_version = _windows_get_version_string ();
    metadata->os_architecture = _windows_get_arch_string ();
@@ -198,11 +218,11 @@ _mongoc_client_metadata_init ()
    /* Do OS detection here */
    _get_system_info (&gMongocMetadata);
 
-   BSON_ASSERT (strlen (driver_name) < METADATA_DRIVER_NAME_MAX);
-   gMongocMetadata.driver_name = bson_strdup (driver_name);
+   gMongocMetadata.driver_name = bson_strndup (driver_name,
+                                               METADATA_DRIVER_NAME_MAX);
 
-   BSON_ASSERT (strlen (MONGOC_VERSION_S) < METADATA_DRIVER_NAME_MAX);
-   gMongocMetadata.driver_version = bson_strdup (MONGOC_VERSION_S);
+   gMongocMetadata.driver_version = bson_strndup (MONGOC_VERSION_S,
+                                                  METADATA_DRIVER_VERSION_MAX);
 
    gMongocMetadata.platform = bson_strdup_printf (
       "cfgbits 0x%x CC=%s CFLAGS=%s SSL_CFLAGS=%s SSL_LIBS=%s",
@@ -236,7 +256,12 @@ _append_and_free (const char **s,
    }
 }
 
-void
+/*
+ * Return true if we build the document, and it's not too big
+ * False if there's no way to prevent the doc from being too big. In this
+ * case, the caller shouldn't include it with isMaster
+ */
+bool
 _build_metadata_doc_with_application (bson_t     *doc,
                                       const char *application)
 {
@@ -248,8 +273,6 @@ _build_metadata_doc_with_application (bson_t     *doc,
       BCON_APPEND (doc, "application", application);
    }
 
-   BSON_ASSERT (doc->len < METADATA_MAX_SIZE);
-
    BCON_APPEND (doc,
                 "driver", "{",
                 "name", gMongocMetadata.driver_name,
@@ -258,19 +281,17 @@ _build_metadata_doc_with_application (bson_t     *doc,
 
    BCON_APPEND (doc,
                 "os", "{",
-                "name", BCON_UTF8 (STRING_OR_EMPTY (gMongocMetadata.os_name)),
+                "name", BCON_UTF8 (_string_or_empty (gMongocMetadata.os_name)),
                 "architecture",
-                BCON_UTF8 (STRING_OR_EMPTY (gMongocMetadata.os_architecture)),
+                BCON_UTF8 (_string_or_empty (gMongocMetadata.os_architecture)),
                 "version",
-                BCON_UTF8 (STRING_OR_EMPTY (gMongocMetadata.os_version)),
+                BCON_UTF8 (_string_or_empty (gMongocMetadata.os_version)),
                 "}");
 
    if (doc->len > METADATA_MAX_SIZE) {
       /* All of the fields we've added so far have been truncated to some
-       * limit, so this should never happen. */
-      MONGOC_ERROR ("Metadata doc is too big!");
-      abort ();
-      return;
+       * limit, so there's no preventing us from going over the limit. */
+      return false;
    }
 
    /* Try to add platform */
@@ -300,6 +321,9 @@ _build_metadata_doc_with_application (bson_t     *doc,
                 BCON_UTF8 ((platform_copy ? platform_copy :
                             gMongocMetadata.platform)));
    bson_free (platform_copy);
+
+   BSON_ASSERT (doc->len <= METADATA_MAX_SIZE);
+   return true;
 }
 
 void

@@ -20,6 +20,11 @@
 #include "mongoc-util-private.h"
 #include "mongoc-client.h"
 
+const char *
+_string_or_empty (const char *s)
+{
+   return (s == NULL) ? "" : s;
+}
 
 char *
 _mongoc_hex_md5 (const char *input)

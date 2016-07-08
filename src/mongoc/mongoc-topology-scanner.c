@@ -55,13 +55,21 @@ _build_ismaster_with_metadata (mongoc_topology_scanner_t *ts)
 {
    bson_t *doc = &ts->ismaster_cmd_with_metadata;
    bson_t metadata_doc;
+   bool res;
 
    _add_ismaster (doc);
 
    BSON_APPEND_DOCUMENT_BEGIN (doc, METADATA_FIELD, &metadata_doc);
-   _build_metadata_doc_with_application (&metadata_doc,
-                                         ts->metadata_application);
+   res = _build_metadata_doc_with_application (&metadata_doc,
+                                               ts->metadata_application);
    bson_append_document_end (doc, &metadata_doc);
+
+   if (!res) {
+      /* We didn't succeed at building the metadata doc. In this case, start
+       * from scratch. We won't include meta */
+      bson_reinit (doc);
+      _add_ismaster (doc);
+   }
 }
 
 static bson_t *
