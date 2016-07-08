@@ -17,6 +17,7 @@
 
 #include <bson.h>
 
+#include "mongoc-client-metadata-private.h"
 #include "mongoc-config.h"
 #include "mongoc-counters-private.h"
 #include "mongoc-init.h"
