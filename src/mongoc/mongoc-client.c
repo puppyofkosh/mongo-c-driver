@@ -42,7 +42,6 @@
 #include "mongoc-log.h"
 #include "mongoc-version.h"
 
-
 #ifdef MONGOC_ENABLE_SSL
 #include "mongoc-stream-tls.h"
 #include "mongoc-ssl-private.h"
@@ -1896,8 +1895,8 @@ mongoc_client_set_error_api (mongoc_client_t *client,
 }
 
 bool
-mongoc_client_set_application (mongoc_client_t              *client,
-                               const char                   *application_name)
+mongoc_client_set_application (mongoc_client_t *client,
+                               const char      *application_name)
 {
    if (!client->topology->single_threaded) {
       return false;

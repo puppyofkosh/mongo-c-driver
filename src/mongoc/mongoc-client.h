@@ -179,10 +179,6 @@ bool                           mongoc_client_set_error_api                 (mong
                                                                             int32_t                       version);
 bool                           mongoc_client_set_application               (mongoc_client_t              *client,
                                                                             const char                   *application_name);
-bool                           mongoc_client_set_metadata                  (mongoc_client_t              *client,
-                                                                            const char                   *driver_name,
-                                                                            const char                   *version,
-                                                                            const char                   *platform);
 BSON_END_DECLS
 
 

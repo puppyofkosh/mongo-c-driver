@@ -59,10 +59,6 @@ bool                  mongoc_client_pool_set_error_api     (mongoc_client_pool_t
                                                             int32_t                 version);
 bool                  mongoc_client_pool_set_application   (mongoc_client_pool_t   *pool,
                                                             const char             *application_name);
-bool                  mongoc_client_pool_set_metadata      (mongoc_client_pool_t   *pool,
-                                                            const char             *driver_name,
-                                                            const char             *version,
-                                                            const char             *platform);
 BSON_END_DECLS
 
 

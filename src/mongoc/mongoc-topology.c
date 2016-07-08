@@ -741,7 +741,8 @@ mongoc_topology_server_timestamp (mongoc_topology_t *topology,
 
 
 bool
-_mongoc_topology_is_scanner_active (mongoc_topology_t* topology) {
+_mongoc_topology_is_scanner_active (mongoc_topology_t *topology)
+{
    bool ret;
 
    mongoc_mutex_lock (&topology->mutex);

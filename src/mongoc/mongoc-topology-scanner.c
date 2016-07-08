@@ -195,13 +195,11 @@ mongoc_topology_scanner_add_and_scan (mongoc_topology_scanner_t *ts,
    node = mongoc_topology_scanner_add (ts, host, id);
 
    /* begin non-blocking connection, don't wait for success */
-
    if (node && mongoc_topology_scanner_node_setup (node, &node->last_error)) {
       _send_ismaster_cmd (ts, node, timeout_msec);
    }
 
    /* if setup fails the node stays in the scanner. destroyed after the scan. */
-
    return;
 }
 
@@ -733,3 +731,4 @@ mongoc_topology_scanner_reset (mongoc_topology_scanner_t *ts)
       }
    }
 }
+

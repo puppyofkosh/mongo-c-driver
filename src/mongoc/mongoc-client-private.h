@@ -134,6 +134,7 @@ _mongoc_client_kill_cursor              (mongoc_client_t *client,
                                          int64_t          operation_id,
                                          const char      *db,
                                          const char      *collection);
+
 BSON_END_DECLS
 
 

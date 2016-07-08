@@ -162,10 +162,10 @@ mongoc_client_pool_destroy (mongoc_client_pool_t *pool)
 
 
 /*
-  Start the background topology scanner.
-
-  This function assumes the pool's mutex is locked
-*/
+ * Start the background topology scanner.
+ *
+ * This function assumes the pool's mutex is locked
+ */
 static void
 _start_scanner_if_needed (mongoc_client_pool_t *pool)
 {
@@ -353,8 +353,8 @@ mongoc_client_pool_set_error_api (mongoc_client_pool_t *pool,
 }
 
 bool
-mongoc_client_pool_set_application (mongoc_client_pool_t   *pool,
-                                    const char             *application_name)
+mongoc_client_pool_set_application (mongoc_client_pool_t *pool,
+                                    const char           *application_name)
 {
    bool ret;
 
