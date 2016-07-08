@@ -18,6 +18,66 @@
 
 static mongoc_client_metadata_t gMongocMetadata;
 
+static uint32_t
+get_config_bitfield ()
+{
+   uint32_t bf = 0;
+
+#ifdef MONGOC_ENABLE_SSL_SECURE_CHANNEL
+   bf |= MONGOC_MD_FLAG_ENABLE_SSL_SECURE_CHANNEL;
+#endif
+
+#ifdef MONGOC_ENABLE_CRYPTO_CNG
+   bf |= MONGOC_MD_FLAG_ENABLE_CRYPTO_CNG;
+#endif
+
+#ifdef MONGOC_ENABLE_SSL_SECURE_TRANSPORT
+   bf |= MONGOC_MD_FLAG_ENABLE_SSL_SECURE_TRANSPORT;
+#endif
+
+#ifdef MONGOC_ENABLE_CRYPTO_COMMON_CRYPTO
+   bf |= MONGOC_MD_FLAG_ENABLE_CRYPTO_COMMON_CRYPTO;
+#endif
+
+#ifdef MONGOC_ENABLE_SSL_OPENSSL
+   bf |= MONGOC_MD_FLAG_ENABLE_SSL_OPENSSL;
+#endif
+
+#ifdef MONGOC_ENABLE_CRYPTO_LIBCRYPTO
+   bf |= MONGOC_MD_FLAG_ENABLE_CRYPTO_LIBCRYPTO;
+#endif
+
+#ifdef MONGOC_ENABLE_SSL
+   bf |= MONGOC_MD_FLAG_ENABLE_SSL;
+#endif
+
+#ifdef MONGOC_ENABLE_CRYPTO
+   bf |= MONGOC_MD_FLAG_ENABLE_CRYPTO;
+#endif
+
+#ifdef MONGOC_ENABLE_CRYPTO_SYSTEM_PROFILE
+   bf |= MONGOC_MD_FLAG_ENABLE_CRYPTO_SYSTEM_PROFILE;
+#endif
+
+#ifdef MONGOC_ENABLE_SASL
+   bf |= MONGOC_MD_FLAG_ENABLE_SASL;
+#endif
+
+#ifdef MONGOC_HAVE_SASL_CLIENT_DONE
+   bf |= MONGOC_MD_FLAG_HAVE_SASL_CLIENT_DONE;
+#endif
+
+#ifdef MONGOC_HAVE_WEAK_SYMBOLS
+   bf |= MONGOC_MD_FLAG_HAVE_WEAK_SYMBOLS;
+#endif
+
+#ifdef MONGOC_NO_AUTOMATIC_GLOBALS
+   bf |= MONGOC_MD_FLAG_NO_AUTOMATIC_GLOBALS;
+#endif
+
+   return bf;
+}
+
 
 #ifdef _WIN32
 static char *
@@ -127,9 +187,12 @@ _mongoc_client_metadata_init ()
    gMongocMetadata.driver_version = bson_strdup (MONGOC_VERSION_S);
 
    /* TODO: CFLAGS=%s, MONGOC_CFLAGS */
-   gMongocMetadata.platform = bson_strdup_printf ("CC=%s ./configure %s",
-                                                  MONGOC_CC,
-                                                  MONGOC_CONFIGURE_ARGS);
+   gMongocMetadata.platform = bson_strdup_printf (
+      "cfgbits 0x%x CC=%s CFLAGS=%s",
+      get_config_bitfield (),
+      MONGOC_CC,
+      MONGOC_CFLAGS);
+
    gMongocMetadata.frozen = false;
 }
 
@@ -174,7 +237,6 @@ _build_metadata_doc_with_application (bson_t     *doc,
                                       const char *application)
 {
    uint32_t max_platform_str_size;
-   uint32_t platform_len;
    char *platform_copy = NULL;
 
    /* Todo: Add os.version, strip and if necessary */
@@ -202,7 +264,7 @@ _build_metadata_doc_with_application (bson_t     *doc,
    if (doc->len > METADATA_MAX_SIZE) {
       /* All of the fields we've added so far have been truncated to some
        * limit, so this should never happen. */
-      MONGOC_ERROR ("Metadata is too big!");
+      MONGOC_ERROR ("Metadata doc is too big!");
       abort ();
       return;
    }
@@ -223,9 +285,7 @@ _build_metadata_doc_with_application (bson_t     *doc,
     * above shouldn't add up to nearly 500 bytes */
    BSON_ASSERT (max_platform_str_size > 0);
 
-   platform_len = strlen (gMongocMetadata.platform);
-
-   if (max_platform_str_size < platform_len) {
+   if (max_platform_str_size < strlen (gMongocMetadata.platform)) {
       platform_copy = bson_strndup (gMongocMetadata.platform,
                                     max_platform_str_size - 1);
       BSON_ASSERT (strlen (platform_copy) <= max_platform_str_size);
