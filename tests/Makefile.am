@@ -96,7 +96,7 @@ test_libmongoc_SOURCES = \
 	tests/test-mongoc-async.c \
 	tests/test-mongoc-buffer.c \
 	tests/test-mongoc-client.c \
-	tests/test-mongoc-client-metadata.c \
+	tests/test-mongoc-metadata.c \
 	tests/test-mongoc-client-pool.c \
 	tests/test-mongoc-cluster.c \
 	tests/test-mongoc-collection.c \

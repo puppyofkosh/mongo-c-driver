@@ -18,7 +18,7 @@
 #include <bson-string.h>
 
 #include "mongoc-client-private.h"
-#include "mongoc-client-metadata-private.h"
+#include "mongoc-metadata-private.h"
 #include "mongoc-error.h"
 #include "mongoc-trace.h"
 #include "mongoc-topology-scanner-private.h"

@@ -1,7 +1,7 @@
 #include <mongoc.h>
 #include "mongoc-client-private.h"
-#include "mongoc-client-metadata.h"
-#include "mongoc-client-metadata-private.h"
+#include "mongoc-metadata.h"
+#include "mongoc-metadata-private.h"
 
 #include "TestSuite.h"
 #include "test-libmongoc.h"

@@ -3,8 +3,8 @@
 #include <mongoc-host-list-private.h>
 
 #include "mongoc-client-private.h"
-#include "mongoc-client-metadata-private.h"
 #include "mongoc-cursor-private.h"
+#include "mongoc-metadata-private.h"
 #include "mongoc-util-private.h"
 
 #include "TestSuite.h"
