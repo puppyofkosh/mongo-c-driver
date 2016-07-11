@@ -282,26 +282,26 @@ _mongoc_metadata_build_doc_with_application (bson_t     *doc,
 {
    uint32_t max_platform_str_size;
    char *platform_copy = NULL;
+   const mongoc_metadata_t *md = &gMongocMetadata;
+   bson_t child;
 
    /* Todo: Add os.version, strip and if necessary */
    if (application) {
-      BCON_APPEND (doc, "application", application);
+      BSON_APPEND_UTF8 (doc, "application", application);
    }
 
-   BCON_APPEND (doc,
-                "driver", "{",
-                "name", gMongocMetadata.driver_name,
-                "version", gMongocMetadata.driver_version,
-                "}");
+   BSON_APPEND_DOCUMENT_BEGIN (doc, "driver", &child);
+   BSON_APPEND_UTF8 (&child, "name", md->driver_name);
+   BSON_APPEND_UTF8 (&child, "version", md->driver_version);
+   bson_append_document_end (doc, &child);
 
-   BCON_APPEND (doc,
-                "os", "{",
-                "name", BCON_UTF8 (_string_or_empty (gMongocMetadata.os_name)),
-                "architecture",
-                BCON_UTF8 (_string_or_empty (gMongocMetadata.os_architecture)),
-                "version",
-                BCON_UTF8 (_string_or_empty (gMongocMetadata.os_version)),
-                "}");
+   BSON_APPEND_DOCUMENT_BEGIN (doc, "os", &child);
+   BSON_APPEND_UTF8 (&child, "name",
+                     _string_or_empty (md->os_name));
+   BSON_APPEND_UTF8 (&child, "architecture",
+                     _string_or_empty (md->os_architecture));
+   BSON_APPEND_UTF8 (&child, "version", _string_or_empty (md->os_version));
+   bson_append_document_end (doc, &child);
 
    if (doc->len > METADATA_MAX_SIZE) {
       /* All of the fields we've added so far have been truncated to some
@@ -325,16 +325,14 @@ _mongoc_metadata_build_doc_with_application (bson_t     *doc,
     * above shouldn't add up to nearly 500 bytes */
    BSON_ASSERT (max_platform_str_size > 0);
 
-   if (max_platform_str_size < strlen (gMongocMetadata.platform)) {
-      platform_copy = bson_strndup (gMongocMetadata.platform,
+   if (max_platform_str_size < strlen (md->platform)) {
+      platform_copy = bson_strndup (md->platform,
                                     max_platform_str_size - 1);
       BSON_ASSERT (strlen (platform_copy) <= max_platform_str_size);
    }
 
-   BCON_APPEND (doc,
-                METADATA_PLATFORM_FIELD,
-                BCON_UTF8 ((platform_copy ? platform_copy :
-                            gMongocMetadata.platform)));
+   BSON_APPEND_UTF8 (doc, METADATA_PLATFORM_FIELD,
+                     platform_copy ? platform_copy : md->platform);
    bson_free (platform_copy);
 
    BSON_ASSERT (doc->len <= METADATA_MAX_SIZE);
