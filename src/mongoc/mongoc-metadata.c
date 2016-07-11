@@ -280,12 +280,11 @@ bool
 _mongoc_metadata_build_doc_with_application (bson_t     *doc,
                                              const char *application)
 {
-   uint32_t max_platform_str_size;
+   int max_platform_str_size;
    char *platform_copy = NULL;
    const mongoc_metadata_t *md = &gMongocMetadata;
    bson_t child;
 
-   /* Todo: Add os.version, strip and if necessary */
    if (application) {
       BSON_APPEND_UTF8 (doc, "application", application);
    }
@@ -316,14 +315,16 @@ _mongoc_metadata_build_doc_with_application (bson_t     *doc,
                             1 +
 
                             /* key size */
-                            (uint32_t) strlen (METADATA_PLATFORM_FIELD) + 1 +
+                            strlen (METADATA_PLATFORM_FIELD) + 1 +
 
                             /* 4 bytes for length of string */
                             4);
 
    /* need at least 1 byte for that null terminator, and all of the fields
     * above shouldn't add up to nearly 500 bytes */
-   BSON_ASSERT (max_platform_str_size > 0);
+   if (max_platform_str_size <= 0) {
+      return false;
+   }
 
    if (max_platform_str_size < strlen (md->platform)) {
       platform_copy = bson_strndup (md->platform,
@@ -355,6 +356,13 @@ _truncate_if_needed (const char **s,
       *s = bson_strndup (*s, max_len);
       bson_free ((char *) tmp);
    }
+}
+
+/* Used for testing if we want to set the OS name to some specific string */
+void
+_mongoc_metadata_override_os_name (const char *name) {
+   bson_free ((char*)gMongocMetadata.os_name);
+   gMongocMetadata.os_name = bson_strdup (name);
 }
 
 bool

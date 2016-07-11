@@ -67,6 +67,7 @@ _build_ismaster_with_metadata (mongoc_topology_scanner_t *ts)
    if (!res) {
       /* We didn't succeed at building the metadata doc. In this case, start
        * from scratch. We won't include meta */
+      MONGOC_WARNING ("Metadata doc is too big, not including in isMaster");
       bson_reinit (doc);
       _add_ismaster (doc);
    }

@@ -101,6 +101,10 @@ _mongoc_metadata_get_osname_from_release_file (const char *path);
 char *
 _mongoc_metadata_get_version_from_osrelease (const char *path);
 
+/* Only used for testing */
+void
+_mongoc_metadata_override_os_name (const char *name);
+
 BSON_END_DECLS
 
 #endif
