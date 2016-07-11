@@ -41,7 +41,7 @@ _get_linux_distro (char **name,
  *
  * Can be modified by calls to mongoc_set_metadata ()
  */
-static mongoc_client_metadata_t gMongocMetadata;
+static mongoc_metadata_t gMongocMetadata;
 
 static uint32_t
 get_config_bitfield ()
@@ -179,7 +179,7 @@ _windows_get_arch_string ()
 }
 
 static void
-_get_system_info (mongoc_client_metadata_t *metadata)
+_get_system_info (mongoc_metadata_t *metadata)
 {
    metadata->os_name = bson_strndup ("Windows", METADATA_OS_NAME_MAX);
    metadata->os_version = _windows_get_version_string ();
@@ -187,7 +187,7 @@ _get_system_info (mongoc_client_metadata_t *metadata)
 }
 #else
 static void
-_get_system_info (mongoc_client_metadata_t *meta)
+_get_system_info (mongoc_metadata_t *meta)
 {
    struct utsname system_info;
    int res;
@@ -208,7 +208,7 @@ _get_system_info (mongoc_client_metadata_t *meta)
 #endif
 
 static void
-_free_system_info (mongoc_client_metadata_t *meta)
+_free_system_info (mongoc_metadata_t *meta)
 {
    bson_free ((char *) meta->os_version);
    bson_free ((char *) meta->os_name);
@@ -216,7 +216,7 @@ _free_system_info (mongoc_client_metadata_t *meta)
 }
 
 void
-_mongoc_client_metadata_init ()
+_mongoc_metadata_init ()
 {
    const char *driver_name = "mongoc";
 
@@ -251,7 +251,7 @@ _mongoc_client_metadata_init ()
 }
 
 void
-_mongoc_client_metadata_cleanup ()
+_mongoc_metadata_cleanup ()
 {
    _free_system_info (&gMongocMetadata);
    bson_free ((char *) gMongocMetadata.driver_name);
@@ -277,8 +277,8 @@ _append_and_free (const char **s,
  * case, the caller shouldn't include it with isMaster
  */
 bool
-_build_metadata_doc_with_application (bson_t     *doc,
-                                      const char *application)
+_mongoc_metadata_build_doc_with_application (bson_t     *doc,
+                                             const char *application)
 {
    uint32_t max_platform_str_size;
    char *platform_copy = NULL;
@@ -342,7 +342,7 @@ _build_metadata_doc_with_application (bson_t     *doc,
 }
 
 void
-_mongoc_client_metadata_freeze ()
+_mongoc_metadata_freeze ()
 {
    gMongocMetadata.frozen = true;
 }
@@ -360,9 +360,9 @@ _truncate_if_needed (const char **s,
 }
 
 bool
-mongoc_set_client_metadata (const char *driver_name,
-                            const char *driver_version,
-                            const char *platform)
+mongoc_metadata_append (const char *driver_name,
+                        const char *driver_version,
+                        const char *platform)
 {
    if (gMongocMetadata.frozen) {
       return false;
@@ -377,7 +377,7 @@ mongoc_set_client_metadata (const char *driver_name,
 
    _append_and_free (&gMongocMetadata.platform, platform);
 
-   _mongoc_client_metadata_freeze ();
+   _mongoc_metadata_freeze ();
    return true;
 }
 

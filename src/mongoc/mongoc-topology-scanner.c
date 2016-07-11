@@ -60,8 +60,8 @@ _build_ismaster_with_metadata (mongoc_topology_scanner_t *ts)
    _add_ismaster (doc);
 
    BSON_APPEND_DOCUMENT_BEGIN (doc, METADATA_FIELD, &metadata_doc);
-   res = _build_metadata_doc_with_application (&metadata_doc,
-                                               ts->metadata_application);
+   res = _mongoc_metadata_build_doc_with_application (&metadata_doc,
+                                                      ts->metadata_application);
    bson_append_document_end (doc, &metadata_doc);
 
    if (!res) {

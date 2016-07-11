@@ -8,7 +8,7 @@
 #include "test-conveniences.h"
 
 /*
- * Call this before any test which uses mongoc_set_client_metadata, to
+ * Call this before any test which uses mongoc_metadata_append, to
  * reset the global state and unfreeze the metadata struct.
  *
  * This is not safe to call while we have any clients or client pools running!
@@ -16,12 +16,12 @@
 static void
 _reset_metadata ()
 {
-   _mongoc_client_metadata_cleanup ();
-   _mongoc_client_metadata_init ();
+   _mongoc_metadata_cleanup ();
+   _mongoc_metadata_init ();
 }
 
 static void
-test_mongoc_client_global_metadata_success ()
+test_mongoc_metadata_append_success ()
 {
    char big_string [METADATA_MAX_SIZE];
 
@@ -31,17 +31,17 @@ test_mongoc_client_global_metadata_success ()
    _reset_metadata ();
 
    /* Make sure setting the metadata works */
-   ASSERT (mongoc_set_client_metadata ("php driver", "version abc",
-                                       "./configure -nottoomanyflags"));
+   ASSERT (mongoc_metadata_append ("php driver", "version abc",
+                                   "./configure -nottoomanyflags"));
 
    _reset_metadata ();
    /* Set each field to some really long string, which should
     * get truncated. We shouldn't fail or crash */
-   ASSERT (mongoc_set_client_metadata (big_string, big_string, big_string));
+   ASSERT (mongoc_metadata_append (big_string, big_string, big_string));
 }
 
 static void
-test_mongoc_client_global_metadata_after_cmd ()
+test_mongoc_metadata_append_after_cmd ()
 {
    mongoc_client_pool_t *pool;
    mongoc_client_t *client;
@@ -57,7 +57,7 @@ test_mongoc_client_global_metadata_after_cmd ()
 
    client = mongoc_client_pool_pop (pool);
 
-   ASSERT (!mongoc_set_client_metadata ("a", "a", "a"));
+   ASSERT (!mongoc_metadata_append ("a", "a", "a"));
 
    mongoc_client_pool_push (pool, client);
 
@@ -70,7 +70,7 @@ test_mongoc_client_global_metadata_after_cmd ()
  * Make sure that it gets truncated
  */
 static void
-test_mongoc_client_global_metadata_too_big ()
+test_mongoc_metadata_too_big ()
 {
    mongoc_client_t *client;
    bson_t *ismaster_doc;
@@ -88,7 +88,7 @@ test_mongoc_client_global_metadata_too_big ()
    memset (big_string, 'a', BUFFER_SIZE - 1);
    big_string[BUFFER_SIZE - 1] = '\0';
 
-   ASSERT (mongoc_set_client_metadata (NULL, NULL, big_string));
+   ASSERT (mongoc_metadata_append (NULL, NULL, big_string));
    client = test_framework_client_new ();
 
    /* Send a ping */
@@ -157,14 +157,14 @@ test_mongoc_metadata_linux_release_file ()
 }
 
 void
-test_client_metadata_install (TestSuite *suite)
+test_metadata_install (TestSuite *suite)
 {
    TestSuite_Add (suite, "/ClientMetadata/success",
-                  test_mongoc_client_global_metadata_success);
+                  test_mongoc_metadata_append_success);
    TestSuite_Add (suite, "/ClientMetadata/failure",
-                  test_mongoc_client_global_metadata_after_cmd);
+                  test_mongoc_metadata_append_after_cmd);
    TestSuite_Add (suite, "/ClientMetadata/too_big",
-                  test_mongoc_client_global_metadata_too_big);
+                  test_mongoc_metadata_too_big);
    TestSuite_Add (suite, "/ClientMetadata/parse_lsb",
                   test_mongoc_metadata_linux_lsb);
    TestSuite_Add (suite, "/ClientMetadata/linux_release_file",

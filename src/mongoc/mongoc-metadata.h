@@ -29,9 +29,9 @@ BSON_BEGIN_DECLS
 #define MONGOC_METADATA_APPLICATION_NAME_MAX 128
 
 bool
-mongoc_set_client_metadata (const char *driver_name,
-                            const char *driver_version,
-                            const char *platform);
+mongoc_metadata_append (const char *driver_name,
+                        const char *driver_version,
+                        const char *platform);
 
 BSON_END_DECLS
 

@@ -62,7 +62,7 @@ typedef enum
 
 
 
-typedef struct _mongoc_client_metadata_t
+typedef struct _mongoc_metadata_t
 {
    const char *os_name;
    const char *os_version;
@@ -73,23 +73,23 @@ typedef struct _mongoc_client_metadata_t
    const char *platform;
 
    bool frozen;
-} mongoc_client_metadata_t;
+} mongoc_metadata_t;
 
 void
-_mongoc_client_metadata_init ();
+_mongoc_metadata_init ();
 void
-_mongoc_client_metadata_cleanup ();
-
-bool
-_build_metadata_doc_with_application (bson_t     *doc,
-                                      const char *application);
-void
-_mongoc_client_metadata_freeze ();
+_mongoc_metadata_cleanup ();
 
 bool
-_mongoc_client_metadata_set_metadata (const char *driver_name,
-                                      const char *driver_version,
-                                      const char *platform);
+_mongoc_metadata_build_doc_with_application (bson_t     *doc,
+                                             const char *application);
+void
+_mongoc_metadata_freeze ();
+
+bool
+_mongoc_metadata_append (const char *driver_name,
+                         const char *driver_version,
+                         const char *platform);
 bool
 _mongoc_metadata_parse_lsb (const char *path,
                             char      **name,
