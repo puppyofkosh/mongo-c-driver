@@ -111,6 +111,51 @@ test_mongoc_client_global_metadata_too_big ()
    mongoc_client_destroy (client);
 }
 
+static void
+test_mongoc_metadata_linux_lsb ()
+{
+   char *name = NULL;
+   char *version = NULL;
+   bool ret;
+
+   ret = _mongoc_metadata_parse_lsb (
+      OS_RELEASE_FILE_DIR "/example-lsb-file.txt",
+      &name, &version);
+
+   ASSERT (ret);
+
+   ASSERT (name);
+   ASSERT (strcmp (name, "Ubuntu") == 0);
+
+   ASSERT (version);
+   ASSERT (strcmp (version, "12.04") == 0);
+
+   bson_free (name);
+   bson_free (version);
+}
+
+static void
+test_mongoc_metadata_linux_release_file ()
+{
+   char *name;
+   char *version;
+   const char *release_path = OS_RELEASE_FILE_DIR "/example-release-file.txt";
+   const char *osversion_path = OS_RELEASE_FILE_DIR "/example-os-version.txt";
+
+   name = _mongoc_metadata_get_osname_from_release_file (release_path);
+
+   /* We expect to get the first line of the file (it's NOT parsing the file
+    * because we're not sure what format it is */
+   ASSERT (strcmp (name, "NAME=\"Ubuntu\"") == 0);
+
+   /* Normally would read from "/proc/sys/kernel/osrelease" */
+   version = _mongoc_metadata_get_version_from_osrelease (osversion_path);
+   ASSERT (strcmp (version, "2.2.14-5.0") == 0);
+
+   bson_free (name);
+   bson_free (version);
+}
+
 void
 test_client_metadata_install (TestSuite *suite)
 {
@@ -120,4 +165,8 @@ test_client_metadata_install (TestSuite *suite)
                   test_mongoc_client_global_metadata_after_cmd);
    TestSuite_Add (suite, "/ClientMetadata/too_big",
                   test_mongoc_client_global_metadata_too_big);
+   TestSuite_Add (suite, "/ClientMetadata/parse_lsb",
+                  test_mongoc_metadata_linux_lsb);
+   TestSuite_Add (suite, "/ClientMetadata/linux_release_file",
+                  test_mongoc_metadata_linux_release_file);
 }
