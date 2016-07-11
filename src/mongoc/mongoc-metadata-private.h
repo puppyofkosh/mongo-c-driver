@@ -90,16 +90,6 @@ bool
 _mongoc_metadata_append (const char *driver_name,
                          const char *driver_version,
                          const char *platform);
-bool
-_mongoc_metadata_parse_lsb (const char *path,
-                            char      **name,
-                            char      **version);
-
-char *
-_mongoc_metadata_get_osname_from_release_file (const char *path);
-
-char *
-_mongoc_metadata_get_version_from_osrelease (const char *path);
 
 /* Only used for testing */
 void
