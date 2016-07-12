@@ -26,8 +26,7 @@
 BSON_BEGIN_DECLS
 
 #define METADATA_FIELD "meta"
-#define METADATA_APPLICATION_FIELD "application"
-#define METADATA_APPLICATION_NAME_FIELD "name"
+#define METADATA_APPNAME_FIELD "application"
 
 #define METADATA_PLATFORM_FIELD "platform"
 

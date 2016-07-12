@@ -933,8 +933,8 @@ _mongoc_topology_background_thread_stop (mongoc_topology_t *topology)
 }
 
 bool
-_mongoc_topology_set_application_name (mongoc_topology_t *topology,
-                                       const char *application)
+_mongoc_topology_set_appname (mongoc_topology_t *topology,
+                              const char *appname)
 {
    bool ret = true;
    mongoc_mutex_lock (&topology->mutex);
@@ -945,8 +945,8 @@ _mongoc_topology_set_application_name (mongoc_topology_t *topology,
       goto done;
    }
 
-   ret = _mongoc_topology_scanner_set_application_name (topology->scanner,
-                                                        application);
+   ret = _mongoc_topology_scanner_set_appname (topology->scanner,
+                                               appname);
 done:
    mongoc_mutex_unlock (&topology->mutex);
    return ret;
