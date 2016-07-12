@@ -51,6 +51,7 @@ extern void test_exhaust_install                 (TestSuite *suite);
 extern void test_find_and_modify_install         (TestSuite *suite);
 extern void test_gridfs_file_page_install        (TestSuite *suite);
 extern void test_gridfs_install                  (TestSuite *suite);
+extern void test_linux_distro_scanner_install    (TestSuite *suite);
 extern void test_list_install                    (TestSuite *suite);
 extern void test_log_install                     (TestSuite *suite);
 extern void test_matcher_install                 (TestSuite *suite);
@@ -1648,6 +1649,7 @@ main (int   argc,
    test_find_and_modify_install (&suite);
    test_gridfs_install (&suite);
    test_gridfs_file_page_install (&suite);
+   test_linux_distro_scanner_install (&suite);
    test_list_install (&suite);
    test_log_install (&suite);
    test_matcher_install (&suite);

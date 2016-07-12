@@ -159,6 +159,7 @@ MONGOC_SOURCES_SHARED += \
 	src/mongoc/mongoc-gridfs-file-page.c \
 	src/mongoc/mongoc-gridfs-file-list.c \
 	src/mongoc/mongoc-index.c \
+	src/mongoc/mongoc-linux-distro-scanner.c \
 	src/mongoc/mongoc-list.c \
 	src/mongoc/mongoc-log.c \
 	src/mongoc/mongoc-matcher-op.c \

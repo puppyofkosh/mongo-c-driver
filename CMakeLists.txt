@@ -221,6 +221,7 @@ set (SOURCES
    ${SOURCE_DIR}/src/mongoc/mongoc-host-list.c
    ${SOURCE_DIR}/src/mongoc/mongoc-index.c
    ${SOURCE_DIR}/src/mongoc/mongoc-init.c
+   ${SOURCE_DIR}/src/mongoc/mongoc-linux-distro-scanner.c
    ${SOURCE_DIR}/src/mongoc/mongoc-list.c
    ${SOURCE_DIR}/src/mongoc/mongoc-log.c
    ${SOURCE_DIR}/src/mongoc/mongoc-matcher.c
@@ -438,6 +439,7 @@ set(test-libmongoc-sources
    ${SOURCE_DIR}/tests/test-mongoc-find-and-modify.c
    ${SOURCE_DIR}/tests/test-mongoc-gridfs.c
    ${SOURCE_DIR}/tests/test-mongoc-gridfs-file-page.c
+   ${SOURCE_DIR}/tests/test-mongoc-linux-distro-scanner.c
    ${SOURCE_DIR}/tests/test-mongoc-list.c
    ${SOURCE_DIR}/tests/test-mongoc-log.c
    ${SOURCE_DIR}/tests/test-mongoc-matcher.c
