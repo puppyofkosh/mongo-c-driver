@@ -175,6 +175,10 @@ test_mongoc_metadata_cannot_send ()
    mongoc_client_pool_destroy (pool);
    mongoc_uri_destroy (uri);
    mock_server_destroy (server);
+
+   /* Reset again so the next tests don't have a metadata doc which
+    * is too big */
+   _reset_metadata ();
 }
 
 void

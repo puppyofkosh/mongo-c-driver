@@ -22,7 +22,6 @@
 # error "Only <mongoc.h> can be included directly."
 #endif
 #include <bson.h>
-#include "mongoc-topology-private.h"
 
 BSON_BEGIN_DECLS
 
