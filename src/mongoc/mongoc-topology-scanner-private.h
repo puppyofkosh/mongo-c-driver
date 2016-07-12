@@ -71,7 +71,7 @@ typedef struct mongoc_topology_scanner
    bson_t                          ismaster_cmd;
 
    bson_t                          ismaster_cmd_with_metadata;
-   const char                     *appname;
+   const char                     *application_name;
 
    mongoc_topology_scanner_cb_t    cb;
    void                           *cb_data;
@@ -150,8 +150,8 @@ mongoc_topology_scanner_set_stream_initiator (mongoc_topology_scanner_t *ts,
                                               mongoc_stream_initiator_t  si,
                                               void                      *ctx);
 bool
-_mongoc_topology_scanner_set_appname (mongoc_topology_scanner_t *ts,
-                                      const char                *name);
+_mongoc_topology_scanner_set_application_name (mongoc_topology_scanner_t *ts,
+                                               const char                *name);
 
 
 #ifdef MONGOC_ENABLE_SSL

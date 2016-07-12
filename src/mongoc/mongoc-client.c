@@ -1896,12 +1896,12 @@ mongoc_client_set_error_api (mongoc_client_t *client,
 
 bool
 mongoc_client_set_application (mongoc_client_t *client,
-                               const char      *appname)
+                               const char      *application_name)
 {
    if (!client->topology->single_threaded) {
       return false;
    }
 
-   return _mongoc_topology_set_appname (client->topology,
-                                        appname);
+   return _mongoc_topology_set_application_name (client->topology,
+                                                 application_name);
 }

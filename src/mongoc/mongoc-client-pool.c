@@ -351,13 +351,13 @@ mongoc_client_pool_set_error_api (mongoc_client_pool_t *pool,
 
 bool
 mongoc_client_pool_set_application (mongoc_client_pool_t *pool,
-                                    const char           *appname)
+                                    const char           *application_name)
 {
    bool ret;
 
    mongoc_mutex_lock (&pool->mutex);
-   ret = _mongoc_topology_set_appname (pool->topology,
-                                       appname);
+   ret = _mongoc_topology_set_application_name (pool->topology,
+                                                application_name);
    mongoc_mutex_unlock (&pool->mutex);
 
    return ret;
