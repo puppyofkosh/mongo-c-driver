@@ -7,7 +7,6 @@ AS_IF([test "x${with_libbson}" = xauto],
 
 # If we are to use the system, check for libbson enforcing success.
 AS_IF([test "x${with_libbson}" = xsystem],
-      AC_SUBST(MONGOC_BSON_BUNDLED, 0)
       [PKG_CHECK_MODULES(BSON,
                          [libbson-1.0 >= libbson_required_version],
                          [],
@@ -26,5 +25,4 @@ AS_IF([test "x${with_libbson}" = xbundled],[
    AC_CONFIG_SUBDIRS([src/libbson])
    AC_SUBST(BSON_CFLAGS, "-I${srcdir}/src/libbson/src/bson -Isrc/libbson/src/bson")
    AC_SUBST(BSON_LIBS, "src/libbson/libbson-1.0.la")
-   AC_SUBST(MONGOC_BSON_BUNDLED, 1)
 ])

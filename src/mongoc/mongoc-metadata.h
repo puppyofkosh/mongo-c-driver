@@ -22,7 +22,7 @@
 # error "Only <mongoc.h> can be included directly."
 #endif
 
-#include "mongoc-client.h"
+#include <bson.h>
 
 BSON_BEGIN_DECLS
 

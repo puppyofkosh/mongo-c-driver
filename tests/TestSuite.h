@@ -26,8 +26,6 @@
 extern "C" {
 #endif
 
-#define OS_RELEASE_FILE_DIR "tests/release_files"
-
 
 #ifndef BINARY_DIR
 # define BINARY_DIR "tests/binary"

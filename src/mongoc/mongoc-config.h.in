@@ -28,12 +28,6 @@
 /* The arguments which were passed to the configure script */
 #define MONGOC_CONFIGURE_ARGS "@MONGOC_CONFIGURE_ARGS@"
 
-/* libraries to link to for SSL */
-#define MONGOC_SSL_LIBS "@SSL_LIBS@"
-
-/* cflags that are added for ssl */
-#define MONGOC_SSL_CFLAGS "@SSL_CFLAGS@"
-
 /*
  * MONGOC_ENABLE_SSL_SECURE_CHANNEL is set from configure to determine if we are
  * compiled with Native SSL support on Windows
@@ -176,12 +170,6 @@
 
 #if MONGOC_NO_AUTOMATIC_GLOBALS != 1
 #  undef MONGOC_NO_AUTOMATIC_GLOBALS
-#endif
-
-#define MONGOC_BSON_BUNDLED @MONGOC_BSON_BUNDLED@
-
-#if MONGOC_BSON_BUNDLED != 1
-#  undef MONGOC_BSON_BUNDLED
 #endif
 
 #endif /* MONGOC_CONFIG_H */
