@@ -61,7 +61,7 @@ static void
 _get_driver_info (mongoc_metadata_t *metadata)
 {
    metadata->driver_name = bson_strndup ("mongoc",
-                                        METADATA_DRIVER_NAME_MAX);
+                                         METADATA_DRIVER_NAME_MAX);
    metadata->driver_version = bson_strndup (MONGOC_VERSION_S,
                                             METADATA_DRIVER_VERSION_MAX);
 }
@@ -105,18 +105,6 @@ _mongoc_metadata_cleanup ()
    _free_platform_string (&gMongocMetadata);
 }
 
-static void
-_append_and_free (const char **s,
-                  const char  *suffix)
-{
-   const char *tmp = *s;
-
-   if (suffix) {
-      *s = bson_strdup_printf ("%s / %s", tmp, suffix);
-      bson_free ((char *) tmp);
-   }
-}
-
 /*
  * Return true if we build the document, and it's not too big
  * False if there's no way to prevent the doc from being too big. In this
@@ -142,10 +130,10 @@ _mongoc_metadata_build_doc_with_application (bson_t     *doc,
 
    BSON_APPEND_DOCUMENT_BEGIN (doc, "os", &child);
    BSON_APPEND_UTF8 (&child, "name",
-                     _string_or_empty (md->os_name));
+                     _mongoc_string_or_empty (md->os_name));
    BSON_APPEND_UTF8 (&child, "architecture",
-                     _string_or_empty (md->os_architecture));
-   BSON_APPEND_UTF8 (&child, "version", _string_or_empty (md->os_version));
+                     _mongoc_string_or_empty (md->os_architecture));
+   BSON_APPEND_UTF8 (&child, "version", _mongoc_string_or_empty (md->os_version));
    bson_append_document_end (doc, &child);
 
    if (doc->len > METADATA_MAX_SIZE) {
@@ -200,6 +188,18 @@ _truncate_if_needed (const char **s,
 
    if (strlen (*s) > max_len) {
       *s = bson_strndup (*s, max_len);
+      bson_free ((char *) tmp);
+   }
+}
+
+static void
+_append_and_free (const char **s,
+                  const char  *suffix)
+{
+   const char *tmp = *s;
+
+   if (suffix) {
+      *s = bson_strdup_printf ("%s / %s", tmp, suffix);
       bson_free ((char *) tmp);
    }
 }

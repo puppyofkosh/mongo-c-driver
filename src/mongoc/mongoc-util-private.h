@@ -40,7 +40,7 @@
 BSON_BEGIN_DECLS
 
 const char *
-_string_or_empty (const char *s);
+_mongoc_string_or_empty (const char *s);
 
 char *_mongoc_hex_md5 (const char *input);
 
