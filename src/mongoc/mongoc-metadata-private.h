@@ -64,13 +64,13 @@ typedef enum
 
 typedef struct _mongoc_metadata_t
 {
-   const char *os_name;
-   const char *os_version;
-   const char *os_architecture;
+   char *os_name;
+   char *os_version;
+   char *os_architecture;
 
-   const char *driver_name;
-   const char *driver_version;
-   const char *platform;
+   char *driver_name;
+   char *driver_version;
+   char *platform;
 
    bool frozen;
 } mongoc_metadata_t;

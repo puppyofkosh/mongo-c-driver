@@ -52,9 +52,9 @@ _get_system_info (mongoc_metadata_t *metadata)
 static void
 _free_system_info (mongoc_metadata_t *meta)
 {
-   bson_free ((char *) meta->os_version);
-   bson_free ((char *) meta->os_name);
-   bson_free ((char *) meta->os_architecture);
+   bson_free (meta->os_version);
+   bson_free (meta->os_name);
+   bson_free (meta->os_architecture);
 }
 
 static void
@@ -69,21 +69,22 @@ _get_driver_info (mongoc_metadata_t *metadata)
 static void
 _free_driver_info (mongoc_metadata_t *metadata)
 {
-   bson_free ((char *) metadata->driver_name);
-   bson_free ((char *) metadata->driver_version);
+   bson_free (metadata->driver_name);
+   bson_free (metadata->driver_version);
 }
 
 static void
 _set_platform_string (mongoc_metadata_t *metadata)
 {
    const char *v = "CC=gcc CFLAGS=-Werror SSL_CFLAGS=whatever";
+
    gMongocMetadata.platform = bson_strdup (v);
 }
 
 static void
 _free_platform_string (mongoc_metadata_t *metadata)
 {
-   bson_free ((char*) metadata->platform);
+   bson_free (metadata->platform);
 }
 
 void
@@ -133,7 +134,8 @@ _mongoc_metadata_build_doc_with_application (bson_t     *doc,
                      _mongoc_string_or_empty (md->os_name));
    BSON_APPEND_UTF8 (&child, "architecture",
                      _mongoc_string_or_empty (md->os_architecture));
-   BSON_APPEND_UTF8 (&child, "version", _mongoc_string_or_empty (md->os_version));
+   BSON_APPEND_UTF8 (&child, "version",
+                     _mongoc_string_or_empty (md->os_version));
    bson_append_document_end (doc, &child);
 
    if (doc->len > METADATA_MAX_SIZE) {
@@ -181,26 +183,23 @@ _mongoc_metadata_freeze ()
 }
 
 static void
-_truncate_if_needed (const char **s,
-                     uint32_t     max_len)
+_truncate_if_needed (char    *s,
+                     uint32_t max_len)
 {
-   const char *tmp = *s;
-
-   if (strlen (*s) > max_len) {
-      *s = bson_strndup (*s, max_len);
-      bson_free ((char *) tmp);
+   if (strlen (s) > max_len) {
+      s[max_len - 1] = '\0';
    }
 }
 
 static void
-_append_and_free (const char **s,
-                  const char  *suffix)
+_append_and_free (char      **s,
+                  const char *suffix)
 {
-   const char *tmp = *s;
+   char *tmp = *s;
 
    if (suffix) {
       *s = bson_strdup_printf ("%s / %s", tmp, suffix);
-      bson_free ((char *) tmp);
+      bson_free (tmp);
    }
 }
 
@@ -208,7 +207,7 @@ _append_and_free (const char **s,
 void
 _mongoc_metadata_override_os_name (const char *name)
 {
-   bson_free ((char*)gMongocMetadata.os_name);
+   bson_free (gMongocMetadata.os_name);
    gMongocMetadata.os_name = bson_strdup (name);
 }
 
@@ -222,10 +221,10 @@ mongoc_metadata_append (const char *driver_name,
    }
 
    _append_and_free (&gMongocMetadata.driver_name, driver_name);
-   _truncate_if_needed (&gMongocMetadata.driver_name, METADATA_DRIVER_NAME_MAX);
+   _truncate_if_needed (gMongocMetadata.driver_name, METADATA_DRIVER_NAME_MAX);
 
    _append_and_free (&gMongocMetadata.driver_version, driver_version);
-   _truncate_if_needed (&gMongocMetadata.driver_version,
+   _truncate_if_needed (gMongocMetadata.driver_version,
                         METADATA_DRIVER_VERSION_MAX);
 
    _append_and_free (&gMongocMetadata.platform, platform);
