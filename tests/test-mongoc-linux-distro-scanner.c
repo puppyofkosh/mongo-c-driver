@@ -16,8 +16,7 @@
 
 #include <mongoc.h>
 #include "mongoc-client-private.h"
-#include "mongoc-metadata.h"
-#include "mongoc-metadata-private.h"
+#include "mongoc-linux-distro-scanner-private.h"
 
 #include "TestSuite.h"
 #include "test-libmongoc.h"
@@ -31,7 +30,7 @@ test_parse_lsb ()
    char *version = NULL;
    bool ret;
 
-   ret = _mongoc_metadata_parse_lsb (
+   ret = _mongoc_linux_distro_scanner_parse_lsb (
       OS_RELEASE_FILE_DIR "/example-lsb-file.txt",
       &name, &version);
 
@@ -51,22 +50,46 @@ static void
 test_release_file ()
 {
    char *name;
-   char *version;
+   char *ver;
    const char *release_path = OS_RELEASE_FILE_DIR "/example-release-file.txt";
-   const char *osversion_path = OS_RELEASE_FILE_DIR "/example-os-version.txt";
+   const char *ver_path = OS_RELEASE_FILE_DIR "/example-os-version.txt";
 
-   name = _mongoc_metadata_get_osname_from_release_file (release_path);
+   name = _mongoc_linux_distro_scanner_get_osname_from_release_file (
+      release_path);
 
    /* We expect to get the first line of the file (it's NOT parsing the file
     * because we're not sure what format it is */
    ASSERT (strcmp (name, "NAME=\"Ubuntu\"") == 0);
 
    /* Normally would read from "/proc/sys/kernel/osrelease" */
-   version = _mongoc_metadata_get_version_from_osrelease (osversion_path);
-   ASSERT (strcmp (version, "2.2.14-5.0") == 0);
+   ver = _mongoc_linux_distro_scanner_get_version_from_osrelease (ver_path);
+   ASSERT (strcmp (ver, "2.2.14-5.0") == 0);
 
    bson_free (name);
-   bson_free (version);
+   bson_free (ver);
+}
+
+/* We only expect this function to actually read anything on linux platforms.
+ * We run this test on all platforms to be sure the get_distro function doesn't
+ * crash on a platform with some of the files it looks for missing */
+static void
+test_distro_scanner_reads ()
+{
+   char *name;
+   char *version;
+
+   _mongoc_linux_distro_scanner_get_distro (&name, &version);
+
+   /*
+    * TODO: Remove this. Just for fun on the evergreen build
+    */
+   fprintf (stderr, "name: %s version: %s\n", name, version);
+   /* Remove it! */
+
+#ifdef __linux
+   ASSERT (strlen (name) > 0);
+   ASSERT (strlen (version) > 0);
+#endif
 }
 
 void
@@ -76,4 +99,6 @@ test_linux_distro_scanner_install (TestSuite *suite)
                   test_parse_lsb);
    TestSuite_Add (suite, "/LinuxDistroScanner/read_release_file",
                   test_release_file);
+   TestSuite_Add (suite, "/LinuxDistroScanner/test_distro_scanner_reads",
+                  test_distro_scanner_reads);
 }

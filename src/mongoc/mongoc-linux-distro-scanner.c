@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #include "mongoc-error.h"
 #include "mongoc-log.h"
 #include "mongoc-version.h"
@@ -80,9 +81,9 @@ _lsb_process_line (char      **name,
 
 
 bool
-_mongoc_metadata_parse_lsb (const char *path,
-                            char      **name,
-                            char      **version)
+_mongoc_linux_distro_scanner_parse_lsb (const char *path,
+                                        char      **name,
+                                        char      **version)
 {
    enum N { bufsize = 4096 };
    char buffer [bufsize];
@@ -206,7 +207,7 @@ _get_first_existing (const char **paths)
 }
 
 char *
-_mongoc_metadata_get_version_from_osrelease (const char *path)
+_mongoc_linux_distro_scanner_get_version_from_osrelease (const char *path)
 {
    /* Read from something like /proc/sys/kernel/osrelease */
    BSON_ASSERT (path);
@@ -214,7 +215,7 @@ _mongoc_metadata_get_version_from_osrelease (const char *path)
 }
 
 char *
-_mongoc_metadata_get_osname_from_release_file (const char *path)
+_mongoc_linux_distro_scanner_get_osname_from_release_file (const char *path)
 {
    BSON_ASSERT (path);
    return _read_first_line_up_to_limit (path);
@@ -245,7 +246,7 @@ _find_and_read_release_file ()
       return NULL;
    }
 
-   return _mongoc_metadata_get_osname_from_release_file (path);
+   return _mongoc_linux_distro_scanner_get_osname_from_release_file (path);
 }
 
 bool
@@ -258,14 +259,15 @@ _mongoc_linux_distro_scanner_get_distro (char **name,
    *name = NULL;
    *version = NULL;
 
-   if (_mongoc_metadata_parse_lsb (lsb_path, name, version)) {
+   if (_mongoc_linux_distro_scanner_parse_lsb (lsb_path, name, version)) {
       return true;
    }
 
    /* Otherwise get the name from the "release" file and version from
     * /proc/sys/kernel/osrelease */
    *name = _find_and_read_release_file ();
-   *version = _mongoc_metadata_get_version_from_osrelease (osrelease_path);
+   *version = _mongoc_linux_distro_scanner_get_version_from_osrelease (
+      osrelease_path);
 
    return (*name != NULL) && (*version != NULL);
 }

@@ -24,6 +24,17 @@ bool
 _mongoc_linux_distro_scanner_get_distro (char **name,
                                          char **version);
 
+bool
+_mongoc_linux_distro_scanner_parse_lsb (const char *path,
+                                        char      **name,
+                                        char      **version);
+
+char *
+_mongoc_linux_distro_scanner_get_osname_from_release_file (const char *path);
+
+char *
+_mongoc_linux_distro_scanner_get_version_from_osrelease (const char *path);
+
 BSON_END_DECLS
 
 #endif
