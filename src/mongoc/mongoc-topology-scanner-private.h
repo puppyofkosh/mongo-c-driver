@@ -71,7 +71,7 @@ typedef struct mongoc_topology_scanner
    bson_t                          ismaster_cmd;
 
    bson_t                          ismaster_cmd_with_metadata;
-   const char                     *application_name;
+   const char                     *appname;
 
    mongoc_topology_scanner_cb_t    cb;
    void                           *cb_data;

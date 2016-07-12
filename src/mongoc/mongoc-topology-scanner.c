@@ -62,7 +62,7 @@ _build_ismaster_with_metadata (mongoc_topology_scanner_t *ts)
 
    BSON_APPEND_DOCUMENT_BEGIN (doc, METADATA_FIELD, &metadata_doc);
    res = _mongoc_metadata_build_doc_with_application (&metadata_doc,
-                                                      ts->application_name);
+                                                      ts->appname);
    bson_append_document_end (doc, &metadata_doc);
 
    /* Return whether the meta doc fit the size limit */
@@ -122,7 +122,7 @@ mongoc_topology_scanner_new (const mongoc_uri_t          *uri,
    ts->cb = cb;
    ts->cb_data = data;
    ts->uri = uri;
-   ts->application_name = NULL;
+   ts->appname = NULL;
 
    return ts;
 }
@@ -160,7 +160,7 @@ mongoc_topology_scanner_destroy (mongoc_topology_scanner_t *ts)
    bson_destroy (&ts->ismaster_cmd);
 
    /* This field can be set by a mongoc_client */
-   bson_free ((char *) ts->application_name);
+   bson_free ((char *) ts->appname);
 
    bson_free (ts);
 }
@@ -747,11 +747,11 @@ _mongoc_topology_scanner_set_application_name (mongoc_topology_scanner_t *ts,
       return false;
    }
 
-   if (ts->application_name != NULL) {
+   if (ts->appname != NULL) {
       /* We've already set it */
       return false;
    }
 
-   ts->application_name = bson_strdup (name);
+   ts->appname = bson_strdup (name);
    return true;
 }
