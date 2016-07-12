@@ -149,6 +149,10 @@ void
 mongoc_topology_scanner_set_stream_initiator (mongoc_topology_scanner_t *ts,
                                               mongoc_stream_initiator_t  si,
                                               void                      *ctx);
+bool
+_mongoc_topology_scanner_set_application_name (mongoc_topology_scanner_t *ts,
+                                               const char                *name);
+
 
 #ifdef MONGOC_ENABLE_SSL
 void

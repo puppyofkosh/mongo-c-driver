@@ -1902,6 +1902,6 @@ mongoc_client_set_application (mongoc_client_t *client,
       return false;
    }
 
-   return _mongoc_topology_set_scanner_application_metadata (client->topology,
-                                                             application_name);
+   return _mongoc_topology_set_application_name (client->topology,
+                                                 application_name);
 }

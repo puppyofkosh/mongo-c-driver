@@ -108,7 +108,6 @@ bool
 _mongoc_topology_is_scanner_active (mongoc_topology_t *topology);
 
 bool
-_mongoc_topology_set_scanner_application_metadata (mongoc_topology_t *topology,
-                                                   const char        *application);
-
+_mongoc_topology_set_application_name (mongoc_topology_t *topology,
+                                       const char *application);
 #endif

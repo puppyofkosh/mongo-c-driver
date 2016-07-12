@@ -18,6 +18,7 @@
 #include <bson-string.h>
 
 #include "mongoc-client-private.h"
+#include "mongoc-metadata.h"
 #include "mongoc-metadata-private.h"
 #include "mongoc-error.h"
 #include "mongoc-trace.h"
@@ -741,3 +742,22 @@ mongoc_topology_scanner_reset (mongoc_topology_scanner_t *ts)
    }
 }
 
+/*
+ * Set a field in the topology scanner.
+ */
+bool
+_mongoc_topology_scanner_set_application_name (mongoc_topology_scanner_t *ts,
+                                               const char                *name)
+{
+   if (strlen (name) > MONGOC_METADATA_APPLICATION_NAME_MAX) {
+      return false;
+   }
+
+   if (ts->metadata_application != NULL) {
+      /* We've already set it */
+      return false;
+   }
+
+   ts->metadata_application = bson_strdup (name);
+   return true;
+}
