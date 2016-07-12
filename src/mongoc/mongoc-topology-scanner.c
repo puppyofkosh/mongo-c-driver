@@ -62,7 +62,7 @@ _build_ismaster_with_metadata (mongoc_topology_scanner_t *ts)
 
    BSON_APPEND_DOCUMENT_BEGIN (doc, METADATA_FIELD, &metadata_doc);
    res = _mongoc_metadata_build_doc_with_application (&metadata_doc,
-                                                      ts->metadata_application);
+                                                      ts->application_name);
    bson_append_document_end (doc, &metadata_doc);
 
    if (!res) {
@@ -91,15 +91,10 @@ _get_ismaster_doc (mongoc_topology_scanner_t      *ts,
    return &ts->ismaster_cmd;
 }
 
-/* Decides whether or not to include the metadata and sends isMaster
- * to given node. If it decides to send the metadata, it puts the isMaster
- * command in the given buffer. This function can be called repeatedly
- * with the same buffer argument to avoid rebuilding the isMaster command
- * more than once */
 static void
-_send_ismaster_cmd (mongoc_topology_scanner_t      *ts,
-                    mongoc_topology_scanner_node_t *node,
-                    int32_t                         timeout_msec)
+_begin_ismaster_cmd (mongoc_topology_scanner_t      *ts,
+                     mongoc_topology_scanner_node_t *node,
+                     int32_t                         timeout_msec)
 {
    const bson_t *ismaster_cmd_to_send = _get_ismaster_doc (ts, node);
 
@@ -128,7 +123,7 @@ mongoc_topology_scanner_new (const mongoc_uri_t          *uri,
    ts->cb = cb;
    ts->cb_data = data;
    ts->uri = uri;
-   ts->metadata_application = NULL;
+   ts->application_name = NULL;
 
    return ts;
 }
@@ -166,7 +161,7 @@ mongoc_topology_scanner_destroy (mongoc_topology_scanner_t *ts)
    bson_destroy (&ts->ismaster_cmd);
 
    /* This field can be set by a mongoc_client */
-   bson_free ((char *) ts->metadata_application);
+   bson_free ((char *) ts->application_name);
 
    bson_free (ts);
 }
@@ -206,7 +201,7 @@ mongoc_topology_scanner_add_and_scan (mongoc_topology_scanner_t *ts,
 
    /* begin non-blocking connection, don't wait for success */
    if (node && mongoc_topology_scanner_node_setup (node, &node->last_error)) {
-      _send_ismaster_cmd (ts, node, timeout_msec);
+      _begin_ismaster_cmd (ts, node, timeout_msec);
    }
 
    /* if setup fails the node stays in the scanner. destroyed after the scan. */
@@ -623,7 +618,7 @@ mongoc_topology_scanner_start (mongoc_topology_scanner_t *ts,
       if (node->last_failed < cooldown) {
          if (mongoc_topology_scanner_node_setup (node, &node->last_error)) {
             BSON_ASSERT (!node->cmd);
-            _send_ismaster_cmd (ts, node, timeout_msec);
+            _begin_ismaster_cmd (ts, node, timeout_msec);
          }
       }
    }
@@ -753,11 +748,11 @@ _mongoc_topology_scanner_set_application_name (mongoc_topology_scanner_t *ts,
       return false;
    }
 
-   if (ts->metadata_application != NULL) {
+   if (ts->application_name != NULL) {
       /* We've already set it */
       return false;
    }
 
-   ts->metadata_application = bson_strdup (name);
+   ts->application_name = bson_strdup (name);
    return true;
 }
