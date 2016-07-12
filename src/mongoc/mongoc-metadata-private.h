@@ -40,26 +40,6 @@ BSON_BEGIN_DECLS
 /* platform has no fixed max size. It can just occupy the remaining
  * available space in the document. */
 
-typedef enum
-{
-   MONGOC_MD_FLAG_ENABLE_SSL_SECURE_CHANNEL    = 1 << 0,
-   MONGOC_MD_FLAG_ENABLE_CRYPTO_CNG            = 1 << 1,
-   MONGOC_MD_FLAG_ENABLE_SSL_SECURE_TRANSPORT  = 1 << 2,
-   MONGOC_MD_FLAG_ENABLE_CRYPTO_COMMON_CRYPTO  = 1 << 3,
-   MONGOC_MD_FLAG_ENABLE_SSL_OPENSSL           = 1 << 4,
-   MONGOC_MD_FLAG_ENABLE_CRYPTO_LIBCRYPTO      = 1 << 5,
-   MONGOC_MD_FLAG_ENABLE_SSL                   = 1 << 6,
-   MONGOC_MD_FLAG_ENABLE_CRYPTO                = 1 << 7,
-   MONGOC_MD_FLAG_ENABLE_CRYPTO_SYSTEM_PROFILE = 1 << 8,
-   MONGOC_MD_FLAG_ENABLE_SASL                  = 1 << 9,
-   MONGOC_MD_FLAG_HAVE_SASL_CLIENT_DONE        = 1 << 10,
-   MONGOC_MD_FLAG_HAVE_WEAK_SYMBOLS            = 1 << 11,
-   MONGOC_MD_FLAG_NO_AUTOMATIC_GLOBALS         = 1 << 12,
-   MONGOC_MD_FLAG_BSON_BUNDLED                 = 1 << 13,
-} mongoc_metadata_config_flags_t;
-
-
-
 typedef struct _mongoc_metadata_t
 {
    char *os_name;
@@ -73,25 +53,19 @@ typedef struct _mongoc_metadata_t
    bool frozen;
 } mongoc_metadata_t;
 
-void
-_mongoc_metadata_init ();
-void
-_mongoc_metadata_cleanup ();
+void _mongoc_metadata_init                       ();
+void _mongoc_metadata_cleanup                    ();
 
-bool
-_mongoc_metadata_build_doc_with_application (bson_t     *doc,
-                                             const char *application);
-void
-_mongoc_metadata_freeze ();
+bool _mongoc_metadata_build_doc_with_application (bson_t     *doc,
+                                                  const char *application);
+void _mongoc_metadata_freeze                     ();
 
-bool
-_mongoc_metadata_append (const char *driver_name,
-                         const char *driver_version,
-                         const char *platform);
+bool _mongoc_metadata_append                     (const char *driver_name,
+                                                  const char *driver_version,
+                                                  const char *platform);
 
 /* Only used for testing */
-void
-_mongoc_metadata_override_os_name (const char *name);
+void _mongoc_metadata_override_os_name           (const char *name);
 
 BSON_END_DECLS
 

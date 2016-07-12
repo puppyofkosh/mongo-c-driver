@@ -43,10 +43,9 @@ static void
 _get_system_info (mongoc_metadata_t *metadata)
 {
    /* FIXME TODO Dummy function to be filled in later */
-   metadata->os_name = bson_strndup ("Mac OSX Something", METADATA_OS_NAME_MAX);
-   metadata->os_version = bson_strndup ("123", METADATA_OS_VERSION_MAX);
-   metadata->os_architecture = bson_strndup ("ARM",
-                                             METADATA_OS_ARCHITECTURE_MAX);
+   metadata->os_name = bson_strndup ("Unkown", METADATA_OS_NAME_MAX);
+   metadata->os_version = bson_strdup ("");
+   metadata->os_architecture = bson_strdup ("");
 }
 
 static void
@@ -76,9 +75,9 @@ _free_driver_info (mongoc_metadata_t *metadata)
 static void
 _set_platform_string (mongoc_metadata_t *metadata)
 {
-   const char *v = "CC=gcc CFLAGS=-Werror SSL_CFLAGS=whatever";
+   const char *v = "Unkown platform";
 
-   gMongocMetadata.platform = bson_strdup (v);
+   metadata->platform = bson_strdup (v);
 }
 
 static void
@@ -108,7 +107,7 @@ _mongoc_metadata_cleanup ()
 
 /*
  * Return true if we build the document, and it's not too big
- * False if there's no way to prevent the doc from being too big. In this
+ * false if there's no way to prevent the doc from being too big. In this
  * case, the caller shouldn't include it with isMaster
  */
 bool
@@ -132,15 +131,16 @@ _mongoc_metadata_build_doc_with_application (bson_t     *doc,
    BSON_APPEND_DOCUMENT_BEGIN (doc, "os", &child);
    BSON_APPEND_UTF8 (&child, "name",
                      _mongoc_string_or_empty (md->os_name));
-   BSON_APPEND_UTF8 (&child, "architecture",
-                     _mongoc_string_or_empty (md->os_architecture));
    BSON_APPEND_UTF8 (&child, "version",
                      _mongoc_string_or_empty (md->os_version));
+   BSON_APPEND_UTF8 (&child, "architecture",
+                     _mongoc_string_or_empty (md->os_architecture));
    bson_append_document_end (doc, &child);
 
    if (doc->len > METADATA_MAX_SIZE) {
-      /* All of the fields we've added so far have been truncated to some
-       * limit, so there's no preventing us from going over the limit. */
+      /* We've done all we can possibly do to ensure the current
+       * document is below the maxsize, so if it overflows there is
+       * nothing else we can do, so we fail */
       return false;
    }
 
@@ -183,24 +183,29 @@ _mongoc_metadata_freeze ()
 }
 
 static void
-_truncate_if_needed (char    *s,
-                     uint32_t max_len)
-{
-   if (strlen (s) > max_len) {
-      s[max_len - 1] = '\0';
-   }
-}
-
-static void
-_append_and_free (char      **s,
-                  const char *suffix)
+_append_and_truncate (char      **s,
+                      const char *suffix,
+                      int         max_len)
 {
    char *tmp = *s;
+   const int delim_len = strlen (" / ");
+   int space_for_suffix;
+   int base_len = strlen (*s);
 
-   if (suffix) {
-      *s = bson_strdup_printf ("%s / %s", tmp, suffix);
-      bson_free (tmp);
+   if (!suffix) {
+      return;
    }
+
+   if (max_len == -1) {
+      space_for_suffix = strlen (suffix);
+   } else {
+      space_for_suffix = max_len - base_len - delim_len;
+      BSON_ASSERT (space_for_suffix >= 0);
+   }
+
+   *s = bson_strdup_printf ("%s / %.*s", tmp, space_for_suffix, suffix);
+   BSON_ASSERT (strlen (*s) <= max_len);
+   bson_free (tmp);
 }
 
 /* Used for testing if we want to set the OS name to some specific string */
@@ -220,14 +225,13 @@ mongoc_metadata_append (const char *driver_name,
       return false;
    }
 
-   _append_and_free (&gMongocMetadata.driver_name, driver_name);
-   _truncate_if_needed (gMongocMetadata.driver_name, METADATA_DRIVER_NAME_MAX);
+   _append_and_truncate (&gMongocMetadata.driver_name, driver_name,
+                         METADATA_DRIVER_NAME_MAX);
 
-   _append_and_free (&gMongocMetadata.driver_version, driver_version);
-   _truncate_if_needed (gMongocMetadata.driver_version,
-                        METADATA_DRIVER_VERSION_MAX);
+   _append_and_truncate (&gMongocMetadata.driver_version, driver_version,
+                         METADATA_DRIVER_VERSION_MAX);
 
-   _append_and_free (&gMongocMetadata.platform, platform);
+   _append_and_truncate (&gMongocMetadata.platform, platform, -1);
 
    _mongoc_metadata_freeze ();
    return true;
