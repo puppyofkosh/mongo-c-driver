@@ -26,7 +26,8 @@
 
 /*
  * Call this before any test which uses mongoc_metadata_append, to
- * reset the global state and unfreeze the metadata struct.
+ * reset the global state and unfreeze the metadata struct. Call it
+ * after a test so later tests don't have a weird metadata document
  *
  * This is not safe to call while we have any clients or client pools running!
  */
@@ -55,6 +56,8 @@ test_mongoc_metadata_append_success ()
    /* Set each field to some really long string, which should
     * get truncated. We shouldn't fail or crash */
    ASSERT (mongoc_metadata_append (big_string, big_string, big_string));
+
+   _reset_metadata ();
 }
 
 static void
@@ -80,6 +83,8 @@ test_mongoc_metadata_append_after_cmd ()
 
    mongoc_uri_destroy (uri);
    mongoc_client_pool_destroy (pool);
+
+   _reset_metadata ();
 }
 
 /*
@@ -108,6 +113,8 @@ test_mongoc_metadata_too_big ()
    ASSERT (mongoc_metadata_append (NULL, NULL, big_string));
    client = test_framework_client_new ();
 
+   mongoc_client_set_application (client, "my app");
+
    /* Send a ping */
    ret = mongoc_client_command_simple (client, "admin",
                                        tmp_bson ("{'ping': 1}"), NULL,
@@ -126,6 +133,9 @@ test_mongoc_metadata_too_big ()
    ASSERT (len == METADATA_MAX_SIZE);
 
    mongoc_client_destroy (client);
+
+   /* So later tests don't have "aaaaa..." as the md platform string */
+   _reset_metadata ();
 }
 
 /* Test the case where we can't prevent the metadata doc being too big

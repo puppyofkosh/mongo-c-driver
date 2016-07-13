@@ -108,6 +108,43 @@ _mongoc_metadata_cleanup (void)
    _free_platform_string (&gMongocMetadata);
 }
 
+static bool
+_append_platform_field (bson_t     *doc,
+                        const char *platform)
+{
+   int max_platform_str_size;
+   char *platform_copy = NULL;
+
+   /* Try to add platform */
+   max_platform_str_size = METADATA_MAX_SIZE -
+                           (doc->len +
+                            /* 1 byte for utf8 tag */
+                            1 +
+
+                            /* key size */
+                            strlen (METADATA_PLATFORM_FIELD) + 1 +
+
+                            /* 4 bytes for length of string */
+                            4);
+
+   /* need at least 1 byte for that null terminator, and all of the fields
+    * above shouldn't add up to nearly 500 bytes */
+   if (max_platform_str_size <= 0) {
+      return false;
+   }
+
+   if (max_platform_str_size < strlen (platform)) {
+      platform_copy = bson_strndup (platform,
+                                    max_platform_str_size - 1);
+      BSON_ASSERT (strlen (platform_copy) <= max_platform_str_size);
+   }
+
+   BSON_APPEND_UTF8 (doc, METADATA_PLATFORM_FIELD,
+                     platform_copy ? platform_copy : platform);
+   bson_free (platform_copy);
+   return true;
+}
+
 /*
  * Return true if we build the document, and it's not too big
  * false if there's no way to prevent the doc from being too big. In this
@@ -115,15 +152,15 @@ _mongoc_metadata_cleanup (void)
  */
 bool
 _mongoc_metadata_build_doc_with_application (bson_t     *doc,
-                                             const char *application)
+                                             const char *appname)
 {
-   int max_platform_str_size;
-   char *platform_copy = NULL;
    const mongoc_metadata_t *md = &gMongocMetadata;
    bson_t child;
 
-   if (application) {
-      BSON_APPEND_UTF8 (doc, "application", application);
+   if (appname) {
+      BSON_APPEND_DOCUMENT_BEGIN (doc, "application", &child);
+      BSON_APPEND_UTF8 (&child, "name", appname);
+      bson_append_document_end (doc, &child);
    }
 
    BSON_APPEND_DOCUMENT_BEGIN (doc, "driver", &child);
@@ -158,35 +195,10 @@ _mongoc_metadata_build_doc_with_application (bson_t     *doc,
       return false;
    }
 
-   /* Try to add platform */
-   max_platform_str_size = METADATA_MAX_SIZE -
-                           (doc->len +
-                            /* 1 byte for utf8 tag */
-                            1 +
-
-                            /* key size */
-                            strlen (METADATA_PLATFORM_FIELD) + 1 +
-
-                            /* 4 bytes for length of string */
-                            4);
-
-   /* need at least 1 byte for that null terminator, and all of the fields
-    * above shouldn't add up to nearly 500 bytes */
-   if (max_platform_str_size <= 0) {
-      return false;
+   if (md->platform) {
+      return _append_platform_field (doc, md->platform);
    }
 
-   if (max_platform_str_size < strlen (md->platform)) {
-      platform_copy = bson_strndup (md->platform,
-                                    max_platform_str_size - 1);
-      BSON_ASSERT (strlen (platform_copy) <= max_platform_str_size);
-   }
-
-   BSON_APPEND_UTF8 (doc, METADATA_PLATFORM_FIELD,
-                     platform_copy ? platform_copy : md->platform);
-   bson_free (platform_copy);
-
-   BSON_ASSERT (doc->len <= METADATA_MAX_SIZE);
    return true;
 }
 
@@ -247,7 +259,13 @@ mongoc_metadata_append (const char *driver_name,
    _append_and_truncate (&gMongocMetadata.driver_version, driver_version,
                          METADATA_DRIVER_VERSION_MAX);
 
-   _append_and_truncate (&gMongocMetadata.platform, platform, -1);
+   if (platform) {
+      if (gMongocMetadata.platform) {
+         _append_and_truncate (&gMongocMetadata.platform, platform, -1);
+      } else {
+         gMongocMetadata.platform = bson_strdup_printf (" / %s", platform);
+      }
+   }
 
    _mongoc_metadata_freeze ();
    return true;
