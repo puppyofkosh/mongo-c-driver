@@ -1740,7 +1740,7 @@ _force_ismaster_with_ping (mongoc_client_t *client,
 {
    future_t *future;
 
-   /* Wait until we're overdue to send a ping */
+   /* Wait until we're overdue to send isMaster */
    _mongoc_usleep (heartbeat_ms * 2 * 1000);
 
    /* Send a ping */

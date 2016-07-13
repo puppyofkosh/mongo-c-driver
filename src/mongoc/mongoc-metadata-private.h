@@ -50,23 +50,20 @@ typedef struct _mongoc_metadata_t
    char *driver_version;
    char *platform;
 
-   bool frozen;
+   bool  frozen;
 } mongoc_metadata_t;
 
-void _mongoc_metadata_init                       (void);
-void _mongoc_metadata_cleanup                    (void);
+void               _mongoc_metadata_init                       (void);
+void               _mongoc_metadata_cleanup                    (void);
 
-bool _mongoc_metadata_build_doc_with_application (bson_t     *doc,
-                                                  const char *application);
-void _mongoc_metadata_freeze                     (void);
+bool               _mongoc_metadata_build_doc_with_application (bson_t     *doc,
+                                                                const char *application);
+void               _mongoc_metadata_freeze                     (void);
 
-bool _mongoc_metadata_append                     (const char *driver_name,
-                                                  const char *driver_version,
-                                                  const char *platform);
-
-/* Only used for testing */
-void _mongoc_metadata_override_os_name           (const char *name);
-
+bool               _mongoc_metadata_append                     (const char *driver_name,
+                                                                const char *driver_version,
+                                                                const char *platform);
+mongoc_metadata_t *_mongoc_metadata_get                        (void);
 BSON_END_DECLS
 
 #endif

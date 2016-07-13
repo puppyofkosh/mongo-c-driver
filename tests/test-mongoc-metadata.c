@@ -151,6 +151,7 @@ test_mongoc_metadata_cannot_send ()
    const char *const server_reply = "{'ok': 1, 'ismaster': true}";
    const bson_t *request_doc;
    char big_string[METADATA_MAX_SIZE];
+   mongoc_metadata_t *md;
 
    _reset_metadata ();
 
@@ -158,7 +159,10 @@ test_mongoc_metadata_cannot_send ()
     * way too big */
    memset (big_string, 'a', METADATA_MAX_SIZE - 1);
    big_string[METADATA_MAX_SIZE - 1] = '\0';
-   _mongoc_metadata_override_os_name (big_string);
+
+   md = _mongoc_metadata_get ();
+   bson_free (md->os_name);
+   md->os_name = bson_strdup (big_string);
 
    server = mock_server_new ();
    mock_server_run (server);

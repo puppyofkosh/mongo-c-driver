@@ -236,14 +236,6 @@ _append_and_truncate (char      **s,
    bson_free (tmp);
 }
 
-/* Used for testing if we want to set the OS name to some specific string */
-void
-_mongoc_metadata_override_os_name (const char *name)
-{
-   bson_free (gMongocMetadata.os_name);
-   gMongocMetadata.os_name = bson_strdup (name);
-}
-
 bool
 mongoc_metadata_append (const char *driver_name,
                         const char *driver_version,
@@ -269,4 +261,10 @@ mongoc_metadata_append (const char *driver_name,
 
    _mongoc_metadata_freeze ();
    return true;
+}
+
+mongoc_metadata_t *
+_mongoc_metadata_get ()
+{
+   return &gMongocMetadata;
 }
