@@ -224,12 +224,8 @@ _append_and_truncate (char      **s,
       return;
    }
 
-   if (max_len == -1) {
-      space_for_suffix = strlen (suffix);
-   } else {
-      space_for_suffix = max_len - base_len - delim_len;
-      BSON_ASSERT (space_for_suffix >= 0);
-   }
+   space_for_suffix = max_len - base_len - delim_len;
+   BSON_ASSERT (space_for_suffix >= 0);
 
    *s = bson_strdup_printf ("%s / %.*s", tmp, space_for_suffix, suffix);
    BSON_ASSERT (strlen (*s) <= max_len);
@@ -241,6 +237,7 @@ mongoc_metadata_append (const char *driver_name,
                         const char *driver_version,
                         const char *platform)
 {
+   int max_size = 0;
    if (gMongocMetadata.frozen) {
       return false;
    }
@@ -253,7 +250,16 @@ mongoc_metadata_append (const char *driver_name,
 
    if (platform) {
       if (gMongocMetadata.platform) {
-         _append_and_truncate (&gMongocMetadata.platform, platform, -1);
+         /* Upper bound on the max size of this string, not exact. */
+         max_size = METADATA_MAX_SIZE -
+            - _mongoc_strlen_or_zero (gMongocMetadata.os_type)
+            - _mongoc_strlen_or_zero (gMongocMetadata.os_name)
+            - _mongoc_strlen_or_zero (gMongocMetadata.os_version)
+            - _mongoc_strlen_or_zero (gMongocMetadata.os_architecture)
+            - _mongoc_strlen_or_zero (gMongocMetadata.driver_name)
+            - _mongoc_strlen_or_zero (gMongocMetadata.driver_version);
+
+         _append_and_truncate (&gMongocMetadata.platform, platform, max_size);
       } else {
          gMongocMetadata.platform = bson_strdup_printf (" / %s", platform);
       }
