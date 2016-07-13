@@ -1732,7 +1732,8 @@ _assert_ismaster_valid (request_t *request,
    ASSERT (bson_has_field (request_doc, METADATA_FIELD) == needs_meta);
 }
 
-
+/* For single threaded clients, to cause an isMaster to be sent, we must wait
+ * until we're overdue for a heartbeat, and then execute some command */
 static future_t *
 _force_ismaster_with_ping (mongoc_client_t *client,
                            int              heartbeat_ms)
@@ -1753,6 +1754,8 @@ _force_ismaster_with_ping (mongoc_client_t *client,
    return future;
 }
 
+/* Call after we've dealt with the isMaster sent by
+ * _force_ismaster_with_ping */
 static void
 _respond_to_ping (future_t      *future,
                   mock_server_t *server)

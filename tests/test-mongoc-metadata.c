@@ -45,6 +45,8 @@ test_mongoc_metadata_append_success ()
    memset (big_string, 'a', METADATA_MAX_SIZE - 1);
    big_string [METADATA_MAX_SIZE - 1] = '\0';
 
+   _reset_metadata ();
+
    /* Make sure setting the metadata works */
    ASSERT (mongoc_metadata_append ("php driver", "version abc",
                                    "./configure -nottoomanyflags"));
@@ -53,8 +55,6 @@ test_mongoc_metadata_append_success ()
    /* Set each field to some really long string, which should
     * get truncated. We shouldn't fail or crash */
    ASSERT (mongoc_metadata_append (big_string, big_string, big_string));
-
-   _reset_metadata ();
 }
 
 static void
@@ -63,6 +63,8 @@ test_mongoc_metadata_append_after_cmd ()
    mongoc_client_pool_t *pool;
    mongoc_client_t *client;
    mongoc_uri_t *uri;
+
+   _reset_metadata ();
 
    uri = mongoc_uri_new ("mongodb://127.0.0.1?maxpoolsize=1&minpoolsize=1");
    pool = mongoc_client_pool_new (uri);
@@ -78,8 +80,6 @@ test_mongoc_metadata_append_after_cmd ()
 
    mongoc_uri_destroy (uri);
    mongoc_client_pool_destroy (pool);
-
-   _reset_metadata ();
 }
 
 /*
@@ -99,6 +99,8 @@ test_mongoc_metadata_too_big ()
    bool ret;
    uint32_t len;
    const uint8_t *dummy;
+
+   _reset_metadata ();
 
    memset (big_string, 'a', BUFFER_SIZE - 1);
    big_string[BUFFER_SIZE - 1] = '\0';
@@ -124,8 +126,6 @@ test_mongoc_metadata_too_big ()
    ASSERT (len == METADATA_MAX_SIZE);
 
    mongoc_client_destroy (client);
-
-   _reset_metadata ();
 }
 
 /* Test the case where we can't prevent the metadata doc being too big
@@ -141,6 +141,8 @@ test_mongoc_metadata_cannot_send ()
    const char *const server_reply = "{'ok': 1, 'ismaster': true}";
    const bson_t *request_doc;
    char big_string[METADATA_MAX_SIZE];
+
+   _reset_metadata ();
 
    /* Mess with our global metadata struct so the metadata doc will be
     * way too big */
