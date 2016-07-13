@@ -39,8 +39,6 @@
 
 BSON_BEGIN_DECLS
 
-const char *
-_mongoc_string_or_empty (const char *s);
 
 char *_mongoc_hex_md5 (const char *input);
 
