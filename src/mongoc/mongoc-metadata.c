@@ -42,17 +42,23 @@ static mongoc_metadata_t gMongocMetadata;
 static void
 _get_system_info (mongoc_metadata_t *metadata)
 {
-   /* FIXME TODO Dummy function to be filled in later */
-   metadata->os_name = bson_strndup ("Unknown", METADATA_OS_NAME_MAX);
-   metadata->os_version = bson_strdup ("");
-   metadata->os_architecture = bson_strdup ("");
+   /* Dummy function to be filled in later */
+   metadata->os_type = bson_strndup ("unknown", METADATA_OS_TYPE_MAX);
+   metadata->os_name = bson_strndup ("unknown", METADATA_OS_NAME_MAX);
+   metadata->os_version = NULL;
+   metadata->os_architecture = NULL;
+   /* General idea of what these are supposed to be: */
+   /* metadata->os_version = bson_strndup ("123", METADATA_OS_VERSION_MAX); */
+   /* metadata->os_architecture = bson_strndup ("ARM", */
+   /*                                           METADATA_OS_ARCHITECTURE_MAX); */
 }
 
 static void
 _free_system_info (mongoc_metadata_t *meta)
 {
-   bson_free (meta->os_version);
+   bson_free (meta->os_type);
    bson_free (meta->os_name);
+   bson_free (meta->os_version);
    bson_free (meta->os_architecture);
 }
 
@@ -89,7 +95,6 @@ _free_platform_string (mongoc_metadata_t *metadata)
 void
 _mongoc_metadata_init ()
 {
-   /* Do OS detection here */
    _get_system_info (&gMongocMetadata);
    _get_driver_info (&gMongocMetadata);
    _set_platform_string (&gMongocMetadata);
@@ -129,9 +134,23 @@ _mongoc_metadata_build_doc_with_application (bson_t     *doc,
    bson_append_document_end (doc, &child);
 
    BSON_APPEND_DOCUMENT_BEGIN (doc, "os", &child);
-   BSON_APPEND_UTF8 (&child, "name", md->os_name);
-   BSON_APPEND_UTF8 (&child, "version", md->os_version);
-   BSON_APPEND_UTF8 (&child, "architecture", md->os_architecture);
+
+   BSON_ASSERT (md->os_type);
+   BSON_APPEND_UTF8 (&child, "type", md->os_type);
+
+   /* OS Type is required */
+   if (md->os_name) {
+      BSON_APPEND_UTF8 (&child, "name", md->os_name);
+   }
+
+   if (md->os_version) {
+      BSON_APPEND_UTF8 (&child, "version", md->os_version);
+   }
+
+   if (md->os_architecture) {
+      BSON_APPEND_UTF8 (&child, "architecture", md->os_architecture);
+   }
+
    bson_append_document_end (doc, &child);
 
    if (doc->len > METADATA_MAX_SIZE) {

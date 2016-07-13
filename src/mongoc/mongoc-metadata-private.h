@@ -33,6 +33,7 @@ BSON_BEGIN_DECLS
 
 #define METADATA_MAX_SIZE 512
 
+#define METADATA_OS_TYPE_MAX 32
 #define METADATA_OS_NAME_MAX 32
 #define METADATA_OS_VERSION_MAX 32
 #define METADATA_OS_ARCHITECTURE_MAX 32
@@ -43,6 +44,7 @@ BSON_BEGIN_DECLS
 
 typedef struct _mongoc_metadata_t
 {
+   char *os_type;
    char *os_name;
    char *os_version;
    char *os_architecture;
