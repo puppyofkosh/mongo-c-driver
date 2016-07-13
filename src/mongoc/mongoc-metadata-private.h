@@ -56,12 +56,12 @@ typedef struct _mongoc_metadata_t
    bool frozen;
 } mongoc_metadata_t;
 
-void _mongoc_metadata_init                       ();
-void _mongoc_metadata_cleanup                    ();
+void _mongoc_metadata_init                       (void);
+void _mongoc_metadata_cleanup                    (void);
 
 bool _mongoc_metadata_build_doc_with_application (bson_t     *doc,
                                                   const char *application);
-void _mongoc_metadata_freeze                     ();
+void _mongoc_metadata_freeze                     (void);
 
 bool _mongoc_metadata_append                     (const char *driver_name,
                                                   const char *driver_version,

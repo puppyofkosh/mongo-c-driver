@@ -81,9 +81,7 @@ _free_driver_info (mongoc_metadata_t *metadata)
 static void
 _set_platform_string (mongoc_metadata_t *metadata)
 {
-   const char *v = "Unknown platform";
-
-   metadata->platform = bson_strdup (v);
+   metadata->platform = NULL;
 }
 
 static void
@@ -93,7 +91,7 @@ _free_platform_string (mongoc_metadata_t *metadata)
 }
 
 void
-_mongoc_metadata_init ()
+_mongoc_metadata_init (void)
 {
    _get_system_info (&gMongocMetadata);
    _get_driver_info (&gMongocMetadata);
@@ -103,7 +101,7 @@ _mongoc_metadata_init ()
 }
 
 void
-_mongoc_metadata_cleanup ()
+_mongoc_metadata_cleanup (void)
 {
    _free_system_info (&gMongocMetadata);
    _free_driver_info (&gMongocMetadata);
@@ -193,7 +191,7 @@ _mongoc_metadata_build_doc_with_application (bson_t     *doc,
 }
 
 void
-_mongoc_metadata_freeze ()
+_mongoc_metadata_freeze (void)
 {
    gMongocMetadata.frozen = true;
 }
