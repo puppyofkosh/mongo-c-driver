@@ -43,7 +43,7 @@ static void
 _get_system_info (mongoc_metadata_t *metadata)
 {
    /* FIXME TODO Dummy function to be filled in later */
-   metadata->os_name = bson_strndup ("Unkown", METADATA_OS_NAME_MAX);
+   metadata->os_name = bson_strndup ("Unknown", METADATA_OS_NAME_MAX);
    metadata->os_version = bson_strdup ("");
    metadata->os_architecture = bson_strdup ("");
 }
@@ -75,7 +75,7 @@ _free_driver_info (mongoc_metadata_t *metadata)
 static void
 _set_platform_string (mongoc_metadata_t *metadata)
 {
-   const char *v = "Unkown platform";
+   const char *v = "Unknown platform";
 
    metadata->platform = bson_strdup (v);
 }
@@ -129,12 +129,9 @@ _mongoc_metadata_build_doc_with_application (bson_t     *doc,
    bson_append_document_end (doc, &child);
 
    BSON_APPEND_DOCUMENT_BEGIN (doc, "os", &child);
-   BSON_APPEND_UTF8 (&child, "name",
-                     _mongoc_string_or_empty (md->os_name));
-   BSON_APPEND_UTF8 (&child, "version",
-                     _mongoc_string_or_empty (md->os_version));
-   BSON_APPEND_UTF8 (&child, "architecture",
-                     _mongoc_string_or_empty (md->os_architecture));
+   BSON_APPEND_UTF8 (&child, "name", md->os_name);
+   BSON_APPEND_UTF8 (&child, "version", md->os_version);
+   BSON_APPEND_UTF8 (&child, "architecture", md->os_architecture);
    bson_append_document_end (doc, &child);
 
    if (doc->len > METADATA_MAX_SIZE) {
@@ -191,6 +188,8 @@ _append_and_truncate (char      **s,
    const int delim_len = strlen (" / ");
    int space_for_suffix;
    int base_len = strlen (*s);
+
+   BSON_ASSERT (*s);
 
    if (!suffix) {
       return;
