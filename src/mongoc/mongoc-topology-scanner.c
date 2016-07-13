@@ -740,10 +740,10 @@ mongoc_topology_scanner_reset (mongoc_topology_scanner_t *ts)
  * Set a field in the topology scanner.
  */
 bool
-_mongoc_topology_scanner_set_application_name (mongoc_topology_scanner_t *ts,
-                                               const char                *name)
+_mongoc_topology_scanner_set_appname (mongoc_topology_scanner_t *ts,
+                                      const char                *appname)
 {
-   if (strlen (name) > MONGOC_METADATA_APPLICATION_NAME_MAX) {
+   if (strlen (appname) > MONGOC_METADATA_APPNAME_MAX) {
       return false;
    }
 
@@ -752,6 +752,6 @@ _mongoc_topology_scanner_set_application_name (mongoc_topology_scanner_t *ts,
       return false;
    }
 
-   ts->appname = bson_strdup (name);
+   ts->appname = bson_strdup (appname);
    return true;
 }

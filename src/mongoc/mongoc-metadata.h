@@ -26,7 +26,7 @@
 
 BSON_BEGIN_DECLS
 
-#define MONGOC_METADATA_APPLICATION_NAME_MAX 128
+#define MONGOC_METADATA_APPNAME_MAX 128
 
 bool mongoc_metadata_append (const char *driver_name,
                              const char *driver_version,
