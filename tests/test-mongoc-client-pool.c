@@ -211,7 +211,7 @@ test_mongoc_client_pool_ssl_disabled (void)
 #endif
 
 static void
-test_mongoc_client_pool_metadata ()
+test_mongoc_client_pool_metadata (void)
 {
    mongoc_client_pool_t *pool;
    mongoc_client_t *client;

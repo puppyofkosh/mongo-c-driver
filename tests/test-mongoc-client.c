@@ -1694,7 +1694,7 @@ test_ssl_reconnect_pooled (void)
 #endif
 
 static void
-test_mongoc_client_application_metadata ()
+test_mongoc_client_application_metadata (void)
 {
    enum { BUFFER_SIZE = METADATA_MAX_SIZE };
    char big_string[BUFFER_SIZE];
@@ -1869,13 +1869,13 @@ _test_client_sends_metadata (bool pooled)
 }
 
 static void
-test_client_sends_metadata_single ()
+test_client_sends_metadata_single (void)
 {
    _test_client_sends_metadata (false);
 }
 
 static void
-test_client_sends_metadata_pooled ()
+test_client_sends_metadata_pooled (void)
 {
    _test_client_sends_metadata (true);
 }

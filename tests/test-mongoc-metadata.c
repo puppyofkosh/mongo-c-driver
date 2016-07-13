@@ -32,14 +32,14 @@
  * This is not safe to call while we have any clients or client pools running!
  */
 static void
-_reset_metadata ()
+_reset_metadata (void)
 {
    _mongoc_metadata_cleanup ();
    _mongoc_metadata_init ();
 }
 
 static void
-test_mongoc_metadata_append_success ()
+test_mongoc_metadata_append_success (void)
 {
    char big_string [METADATA_MAX_SIZE];
 
@@ -61,7 +61,7 @@ test_mongoc_metadata_append_success ()
 }
 
 static void
-test_mongoc_metadata_append_after_cmd ()
+test_mongoc_metadata_append_after_cmd (void)
 {
    mongoc_client_pool_t *pool;
    mongoc_client_t *client;
@@ -92,7 +92,7 @@ test_mongoc_metadata_append_after_cmd ()
  * Make sure that it gets truncated
  */
 static void
-test_mongoc_metadata_too_big ()
+test_mongoc_metadata_too_big (void)
 {
    mongoc_client_t *client;
    bson_t *ismaster_doc;
@@ -141,7 +141,7 @@ test_mongoc_metadata_too_big ()
 /* Test the case where we can't prevent the metadata doc being too big
  * and so we just don't send it */
 static void
-test_mongoc_metadata_cannot_send ()
+test_mongoc_metadata_cannot_send (void)
 {
    mock_server_t *server;
    mongoc_uri_t *uri;

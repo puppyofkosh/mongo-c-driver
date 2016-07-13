@@ -271,7 +271,7 @@ mongoc_metadata_append (const char *driver_name,
 }
 
 mongoc_metadata_t *
-_mongoc_metadata_get ()
+_mongoc_metadata_get (void)
 {
    return &gMongocMetadata;
 }
