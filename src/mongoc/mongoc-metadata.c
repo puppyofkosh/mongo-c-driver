@@ -142,6 +142,7 @@ _append_platform_field (bson_t     *doc,
    BSON_APPEND_UTF8 (doc, METADATA_PLATFORM_FIELD,
                      platform_copy ? platform_copy : platform);
    bson_free (platform_copy);
+   BSON_ASSERT (doc->len <= METADATA_MAX_SIZE);
    return true;
 }
 
@@ -196,7 +197,7 @@ _mongoc_metadata_build_doc_with_application (bson_t     *doc,
    }
 
    if (md->platform) {
-      return _append_platform_field (doc, md->platform);
+      _append_platform_field (doc, md->platform);
    }
 
    return true;
