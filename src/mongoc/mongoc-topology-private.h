@@ -104,7 +104,8 @@ mongoc_topology_server_timestamp (mongoc_topology_t *topology,
 
 bool
 _mongoc_topology_start_background_scanner (mongoc_topology_t *topology);
+
 bool
 _mongoc_topology_set_appname (mongoc_topology_t *topology,
-                              const char *appname);
+                              const char        *appname);
 #endif

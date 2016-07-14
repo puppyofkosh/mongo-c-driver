@@ -15,8 +15,8 @@
  */
 
 
-#ifndef MONGOC_CLIENT_METADATA_PRIVATE_H
-#define MONGOC_CLIENT_METADATA_PRIVATE_H
+#ifndef MONGOC_METADATA_PRIVATE_H
+#define MONGOC_METADATA_PRIVATE_H
 
 #if !defined (MONGOC_INSIDE) && !defined (MONGOC_COMPILATION)
 # error "Only <mongoc.h> can be included directly."
@@ -25,7 +25,7 @@
 
 BSON_BEGIN_DECLS
 
-#define METADATA_FIELD "meta"
+#define METADATA_FIELD "client"
 #define METADATA_PLATFORM_FIELD "platform"
 
 #define METADATA_MAX_SIZE 512

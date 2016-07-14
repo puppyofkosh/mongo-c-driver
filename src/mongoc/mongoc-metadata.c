@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <bson.h>
 
 #include "mongoc-metadata.h"
 #include "mongoc-metadata-private.h"
@@ -23,14 +24,6 @@
 #include "mongoc-log.h"
 #include "mongoc-version.h"
 #include "mongoc-util-private.h"
-
-#ifdef _WIN32
-#include <windows.h>
-#include <stdio.h>
-#include <VersionHelpers.h>
-#else
-#include <sys/utsname.h>
-#endif
 
 /*
  * Global metadata instance. Initialized at startup from mongoc_init ()
@@ -44,7 +37,7 @@ _get_system_info (mongoc_metadata_t *metadata)
 {
    /* Dummy function to be filled in later */
    metadata->os_type = bson_strndup ("unknown", METADATA_OS_TYPE_MAX);
-   metadata->os_name = bson_strndup ("unknown", METADATA_OS_NAME_MAX);
+   metadata->os_name = NULL;
    metadata->os_version = NULL;
    metadata->os_architecture = NULL;
    /* General idea of what these are supposed to be: */
@@ -113,7 +106,6 @@ _append_platform_field (bson_t     *doc,
                         const char *platform)
 {
    int max_platform_str_size;
-   char *platform_copy = NULL;
 
    /* Compute space left for platform field */
    max_platform_str_size = METADATA_MAX_SIZE -
@@ -131,15 +123,11 @@ _append_platform_field (bson_t     *doc,
       return false;
    }
 
-   if (max_platform_str_size < strlen (platform)) {
-      platform_copy = bson_strndup (platform,
-                                    max_platform_str_size - 1);
-      BSON_ASSERT (strlen (platform_copy) <= max_platform_str_size);
-   }
+   max_platform_str_size = BSON_MIN (max_platform_str_size,
+                                     strlen (platform) + 1);
+   bson_append_utf8 (doc, METADATA_PLATFORM_FIELD, -1,
+                     platform, max_platform_str_size - 1);
 
-   BSON_APPEND_UTF8 (doc, METADATA_PLATFORM_FIELD,
-                     platform_copy ? platform_copy : platform);
-   bson_free (platform_copy);
    BSON_ASSERT (doc->len <= METADATA_MAX_SIZE);
    return true;
 }
@@ -206,36 +194,55 @@ _mongoc_metadata_freeze (void)
    gMongocMetadata.frozen = true;
 }
 
+/*
+ * free (*s) and make *s point to *s concated with suffix.
+ * If *s is NULL it's treated like it's an empty string.
+ * If suffix is NULL, nothing happens.
+ */
 static void
-_append_and_truncate (char      **s,
-                      const char *suffix,
-                      int         max_len)
+_append_and_truncate (char       **s,
+                      const char  *suffix,
+                      int          max_len)
 {
-   char *tmp = *s;
+   char *old_str = *s;
+   char *prefix;
    const int delim_len = strlen (" / ");
    int space_for_suffix;
-   int base_len = strlen (*s);
 
-   BSON_ASSERT (*s);
+   BSON_ASSERT (s);
+
+   prefix = old_str ? old_str : "";
 
    if (!suffix) {
       return;
    }
 
-   space_for_suffix = max_len - base_len - delim_len;
+   space_for_suffix = max_len - strlen (prefix) - delim_len;
    BSON_ASSERT (space_for_suffix >= 0);
 
-   *s = bson_strdup_printf ("%s / %.*s", tmp, space_for_suffix, suffix);
+   *s = bson_strdup_printf ("%s / %.*s", prefix, space_for_suffix, suffix);
    BSON_ASSERT (strlen (*s) <= max_len);
-   bson_free (tmp);
+
+   bson_free (old_str);
 }
 
+
+/*
+ * Set some values in our global metadata struct. These values will be sent
+ * to the server as part of the initial connection handshake (isMaster).
+ * If this function is called more than once, or after we've connected to a
+ * mongod, then it will do nothing and return false. It will return true if it
+ * successfully sets the values.
+ *
+ * All arguments are optional.
+ */
 bool
 mongoc_metadata_append (const char *driver_name,
                         const char *driver_version,
                         const char *platform)
 {
    int max_size = 0;
+
    if (gMongocMetadata.frozen) {
       return false;
    }
@@ -246,22 +253,14 @@ mongoc_metadata_append (const char *driver_name,
    _append_and_truncate (&gMongocMetadata.driver_version, driver_version,
                          METADATA_DRIVER_VERSION_MAX);
 
-   if (platform) {
-      if (gMongocMetadata.platform) {
-         /* Upper bound on the max size of this string, not exact. */
-         max_size = METADATA_MAX_SIZE -
-            - _mongoc_strlen_or_zero (gMongocMetadata.os_type)
-            - _mongoc_strlen_or_zero (gMongocMetadata.os_name)
-            - _mongoc_strlen_or_zero (gMongocMetadata.os_version)
-            - _mongoc_strlen_or_zero (gMongocMetadata.os_architecture)
-            - _mongoc_strlen_or_zero (gMongocMetadata.driver_name)
-            - _mongoc_strlen_or_zero (gMongocMetadata.driver_version);
-
-         _append_and_truncate (&gMongocMetadata.platform, platform, max_size);
-      } else {
-         gMongocMetadata.platform = bson_strdup_printf (" / %s", platform);
-      }
-   }
+   max_size = METADATA_MAX_SIZE -
+      - _mongoc_strlen_or_zero (gMongocMetadata.os_type)
+      - _mongoc_strlen_or_zero (gMongocMetadata.os_name)
+      - _mongoc_strlen_or_zero (gMongocMetadata.os_version)
+      - _mongoc_strlen_or_zero (gMongocMetadata.os_architecture)
+      - _mongoc_strlen_or_zero (gMongocMetadata.driver_name)
+      - _mongoc_strlen_or_zero (gMongocMetadata.driver_version);
+   _append_and_truncate (&gMongocMetadata.platform, platform, max_size);
 
    _mongoc_metadata_freeze ();
    return true;

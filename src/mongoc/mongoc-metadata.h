@@ -15,8 +15,8 @@
  */
 
 
-#ifndef MONGOC_CLIENT_METADATA_H
-#define MONGOC_CLIENT_METADATA_H
+#ifndef MONGOC_METADATA_H
+#define MONGOC_METADATA_H
 
 #if !defined (MONGOC_INSIDE) && !defined (MONGOC_COMPILATION)
 # error "Only <mongoc.h> can be included directly."

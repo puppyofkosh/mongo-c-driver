@@ -936,18 +936,13 @@ bool
 _mongoc_topology_set_appname (mongoc_topology_t *topology,
                               const char *appname)
 {
-   bool ret = true;
+   bool ret = false;
    mongoc_mutex_lock (&topology->mutex);
 
-   if (topology->scanner_state != MONGOC_TOPOLOGY_SCANNER_OFF) {
-      /* Can't set fields on the scanner after it's been started! */
-      ret = false;
-      goto done;
+   if (topology->scanner_state == MONGOC_TOPOLOGY_SCANNER_OFF) {
+      ret = _mongoc_topology_scanner_set_appname (topology->scanner,
+                                                  appname);
    }
-
-   ret = _mongoc_topology_scanner_set_appname (topology->scanner,
-                                               appname);
-done:
    mongoc_mutex_unlock (&topology->mutex);
    return ret;
 }
