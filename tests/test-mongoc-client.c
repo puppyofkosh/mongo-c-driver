@@ -1760,10 +1760,12 @@ static void
 _respond_to_ping (future_t      *future,
                   mock_server_t *server)
 {
+   request_t *request;
    ASSERT (future);
-   request_t *request = mock_server_receives_command (server, "admin",
-                                                      MONGOC_QUERY_SLAVE_OK,
-                                                      "{'ping': 1}");
+
+   request = mock_server_receives_command (server, "admin",
+                                           MONGOC_QUERY_SLAVE_OK,
+                                           "{'ping': 1}");
 
    mock_server_replies_simple (request, "{'ok': 1}");
 
