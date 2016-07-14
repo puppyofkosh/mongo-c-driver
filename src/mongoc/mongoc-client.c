@@ -1894,8 +1894,8 @@ mongoc_client_set_error_api (mongoc_client_t *client,
 }
 
 bool
-mongoc_client_set_application (mongoc_client_t *client,
-                               const char      *appname)
+mongoc_client_set_appname (mongoc_client_t *client,
+                           const char      *appname)
 {
    if (!client->topology->single_threaded) {
       return false;

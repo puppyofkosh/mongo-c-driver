@@ -350,8 +350,8 @@ mongoc_client_pool_set_error_api (mongoc_client_pool_t *pool,
 }
 
 bool
-mongoc_client_pool_set_application (mongoc_client_pool_t *pool,
-                                    const char           *appname)
+mongoc_client_pool_set_appname (mongoc_client_pool_t *pool,
+                                const char           *appname)
 {
    bool ret;
 

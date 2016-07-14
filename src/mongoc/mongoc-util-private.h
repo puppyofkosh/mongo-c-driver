@@ -51,7 +51,7 @@ void _mongoc_get_db_name (const char *ns,
 
 void _mongoc_bson_destroy_if_set (bson_t *bson);
 
-int
+size_t
 _mongoc_strlen_or_zero (const char *s);
 BSON_END_DECLS
 

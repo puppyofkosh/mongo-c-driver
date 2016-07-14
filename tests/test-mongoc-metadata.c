@@ -113,7 +113,7 @@ test_mongoc_metadata_too_big (void)
    ASSERT (mongoc_metadata_append (NULL, NULL, big_string));
    client = test_framework_client_new ();
 
-   mongoc_client_set_application (client, "my app");
+   ASSERT (mongoc_client_set_appname (client, "my app"));
 
    /* Send a ping */
    ret = mongoc_client_command_simple (client, "admin",

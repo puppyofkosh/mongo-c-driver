@@ -221,9 +221,9 @@ test_mongoc_client_pool_metadata (void)
    pool = mongoc_client_pool_new (uri);
 
 
-   ASSERT (mongoc_client_pool_set_application (pool, "some application"));
+   ASSERT (mongoc_client_pool_set_appname (pool, "some application"));
    /* Be sure we can't set it twice */
-   ASSERT (!mongoc_client_pool_set_application (pool, "a"));
+   ASSERT (!mongoc_client_pool_set_appname (pool, "a"));
    mongoc_client_pool_destroy (pool);
 
    /* Make sure that after we pop a client we can't set metadata anymore */
@@ -232,13 +232,13 @@ test_mongoc_client_pool_metadata (void)
    client = mongoc_client_pool_pop (pool);
 
    /* Be sure a client can't set it now that we've popped them */
-   ASSERT (!mongoc_client_set_application (client, "a"));
+   ASSERT (!mongoc_client_set_appname (client, "a"));
 
    mongoc_client_pool_push (pool, client);
 
    /* even now that we pushed the client back we shouldn't be able to set
       the metadata */
-   ASSERT (!mongoc_client_pool_set_application (pool, "a"));
+   ASSERT (!mongoc_client_pool_set_appname (pool, "a"));
 
    mongoc_uri_destroy(uri);
    mongoc_client_pool_destroy(pool);

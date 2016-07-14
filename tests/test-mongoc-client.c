@@ -1708,13 +1708,13 @@ test_mongoc_client_application_metadata (void)
    ASSERT (client);
 
    /* Check that setting too long a name causes failure */
-   ASSERT (!mongoc_client_set_application (client, big_string));
+   ASSERT (!mongoc_client_set_appname (client, big_string));
 
    /* Success case */
-   ASSERT (mongoc_client_set_application (client, short_string));
+   ASSERT (mongoc_client_set_appname (client, short_string));
 
    /* Make sure we can't set it twice */
-   ASSERT (!mongoc_client_set_application (client, "a"));
+   ASSERT (!mongoc_client_set_appname (client, "a"));
 
    mongoc_client_destroy (client);
 }
