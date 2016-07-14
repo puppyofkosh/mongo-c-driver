@@ -40,7 +40,6 @@
 #include "mongoc-util-private.h"
 #include "mongoc-set-private.h"
 #include "mongoc-log.h"
-#include "mongoc-version.h"
 
 #ifdef MONGOC_ENABLE_SSL
 #include "mongoc-stream-tls.h"

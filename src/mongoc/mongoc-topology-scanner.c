@@ -17,14 +17,12 @@
 #include <bson.h>
 #include <bson-string.h>
 
-#include "mongoc-client-private.h"
+#include "mongoc-error.h"
 #include "mongoc-metadata.h"
 #include "mongoc-metadata-private.h"
-#include "mongoc-error.h"
 #include "mongoc-trace.h"
 #include "mongoc-topology-scanner-private.h"
 #include "mongoc-stream-socket.h"
-#include "mongoc-version.h"
 
 #ifdef MONGOC_ENABLE_SSL
 #include "mongoc-stream-tls.h"

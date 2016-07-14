@@ -115,7 +115,7 @@ _append_platform_field (bson_t     *doc,
    int max_platform_str_size;
    char *platform_copy = NULL;
 
-   /* Try to add platform */
+   /* Compute space left for platform field */
    max_platform_str_size = METADATA_MAX_SIZE -
                            (doc->len +
                             /* 1 byte for utf8 tag */
@@ -127,8 +127,6 @@ _append_platform_field (bson_t     *doc,
                             /* 4 bytes for length of string */
                             4);
 
-   /* need at least 1 byte for that null terminator, and all of the fields
-    * above shouldn't add up to nearly 500 bytes */
    if (max_platform_str_size <= 0) {
       return false;
    }
@@ -174,7 +172,6 @@ _mongoc_metadata_build_doc_with_application (bson_t     *doc,
    BSON_ASSERT (md->os_type);
    BSON_APPEND_UTF8 (&child, "type", md->os_type);
 
-   /* OS Type is required */
    if (md->os_name) {
       BSON_APPEND_UTF8 (&child, "name", md->os_name);
    }
