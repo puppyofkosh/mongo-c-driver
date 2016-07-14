@@ -196,7 +196,6 @@ set (SOURCES
    ${SOURCE_DIR}/src/mongoc/mongoc-buffer.c
    ${SOURCE_DIR}/src/mongoc/mongoc-bulk-operation.c
    ${SOURCE_DIR}/src/mongoc/mongoc-client.c
-   ${SOURCE_DIR}/src/mongoc/mongoc-metadata.c
    ${SOURCE_DIR}/src/mongoc/mongoc-client-pool.c
    ${SOURCE_DIR}/src/mongoc/mongoc-cluster.c
    ${SOURCE_DIR}/src/mongoc/mongoc-collection.c
@@ -222,6 +221,7 @@ set (SOURCES
    ${SOURCE_DIR}/src/mongoc/mongoc-matcher.c
    ${SOURCE_DIR}/src/mongoc/mongoc-matcher-op.c
    ${SOURCE_DIR}/src/mongoc/mongoc-memcmp.c
+   ${SOURCE_DIR}/src/mongoc/mongoc-metadata.c
    ${SOURCE_DIR}/src/mongoc/mongoc-opcode.c
    ${SOURCE_DIR}/src/mongoc/mongoc-queue.c
    ${SOURCE_DIR}/src/mongoc/mongoc-read-concern.c
@@ -255,8 +255,6 @@ set (HEADERS
    ${SOURCE_DIR}/src/mongoc/mongoc-apm-private.h
    ${SOURCE_DIR}/src/mongoc/mongoc-bulk-operation.h
    ${SOURCE_DIR}/src/mongoc/mongoc-client.h
-   ${SOURCE_DIR}/src/mongoc/mongoc-metadata.h
-   ${SOURCE_DIR}/src/mongoc/mongoc-metadata-private.h
    ${SOURCE_DIR}/src/mongoc/mongoc-client-pool.h
    ${SOURCE_DIR}/src/mongoc/mongoc-collection.h
    ${SOURCE_DIR}/src/mongoc/mongoc-cursor.h
@@ -274,6 +272,8 @@ set (HEADERS
    ${SOURCE_DIR}/src/mongoc/mongoc-iovec.h
    ${SOURCE_DIR}/src/mongoc/mongoc-log.h
    ${SOURCE_DIR}/src/mongoc/mongoc-matcher.h
+   ${SOURCE_DIR}/src/mongoc/mongoc-metadata.h
+   ${SOURCE_DIR}/src/mongoc/mongoc-metadata-private.h
    ${SOURCE_DIR}/src/mongoc/mongoc-opcode.h
    ${SOURCE_DIR}/src/mongoc/mongoc-opcode-private.h
    ${SOURCE_DIR}/src/mongoc/mongoc-read-concern.h
@@ -420,7 +420,6 @@ set(test-libmongoc-sources
    ${SOURCE_DIR}/tests/test-mongoc-async.c
    ${SOURCE_DIR}/tests/test-mongoc-buffer.c
    ${SOURCE_DIR}/tests/test-mongoc-client.c
-   ${SOURCE_DIR}/tests/test-mongoc-metadata.c
    ${SOURCE_DIR}/tests/test-bulk.c
    ${SOURCE_DIR}/tests/test-mongoc-client-pool.c
    ${SOURCE_DIR}/tests/test-mongoc-cluster.c
@@ -437,6 +436,7 @@ set(test-libmongoc-sources
    ${SOURCE_DIR}/tests/test-mongoc-list.c
    ${SOURCE_DIR}/tests/test-mongoc-log.c
    ${SOURCE_DIR}/tests/test-mongoc-matcher.c
+   ${SOURCE_DIR}/tests/test-mongoc-metadata.c
    ${SOURCE_DIR}/tests/test-mongoc-queue.c
    ${SOURCE_DIR}/tests/test-mongoc-read-prefs.c
    ${SOURCE_DIR}/tests/test-mongoc-rpc.c

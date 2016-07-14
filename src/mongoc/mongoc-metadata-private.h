@@ -59,10 +59,6 @@ void               _mongoc_metadata_cleanup                    (void);
 bool               _mongoc_metadata_build_doc_with_application (bson_t     *doc,
                                                                 const char *application);
 void               _mongoc_metadata_freeze                     (void);
-
-bool               _mongoc_metadata_append                     (const char *driver_name,
-                                                                const char *driver_version,
-                                                                const char *platform);
 mongoc_metadata_t *_mongoc_metadata_get                        (void);
 BSON_END_DECLS
 

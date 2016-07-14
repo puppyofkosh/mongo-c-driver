@@ -28,8 +28,6 @@ INST_H_FILES = \
 	src/mongoc/mongoc-buffer-private.h \
 	src/mongoc/mongoc-bulk-operation-private.h \
 	src/mongoc/mongoc-bulk-operation.h \
-	src/mongoc/mongoc-metadata.h \
-	src/mongoc/mongoc-client-private.h \
 	src/mongoc/mongoc-client-pool.h \
 	src/mongoc/mongoc-client-pool-private.h \
 	src/mongoc/mongoc-client-private.h \
@@ -71,6 +69,8 @@ INST_H_FILES = \
 	src/mongoc/mongoc-matcher-private.h \
 	src/mongoc/mongoc-matcher.h \
 	src/mongoc/mongoc-memcmp-private.h \
+	src/mongoc/mongoc-metadata.h \
+	src/mongoc/mongoc-metadata-private.h \
 	src/mongoc/mongoc-opcode.h \
 	src/mongoc/mongoc-opcode-private.h \
 	src/mongoc/mongoc-queue-private.h \
@@ -141,7 +141,6 @@ MONGOC_SOURCES_SHARED += \
 	src/mongoc/mongoc-bulk-operation.c \
 	src/mongoc/mongoc-b64.c \
 	src/mongoc/mongoc-client.c \
-	src/mongoc/mongoc-metadata.c \
 	src/mongoc/mongoc-client-pool.c \
 	src/mongoc/mongoc-cluster.c \
 	src/mongoc/mongoc-collection.c \
@@ -164,6 +163,7 @@ MONGOC_SOURCES_SHARED += \
 	src/mongoc/mongoc-matcher-op.c \
 	src/mongoc/mongoc-matcher.c \
 	src/mongoc/mongoc-memcmp.c \
+	src/mongoc/mongoc-metadata.c \
 	src/mongoc/mongoc-opcode.c \
 	src/mongoc/mongoc-queue.c \
 	src/mongoc/mongoc-read-concern.c \
