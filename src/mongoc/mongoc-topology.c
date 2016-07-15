@@ -870,16 +870,14 @@ _mongoc_topology_start_background_scanner (mongoc_topology_t *topology)
    }
 
    mongoc_mutex_lock (&topology->mutex);
-   if (topology->scanner_state != MONGOC_TOPOLOGY_SCANNER_OFF) {
-      goto done;
+   if (topology->scanner_state == MONGOC_TOPOLOGY_SCANNER_OFF) {
+      topology->scanner_state = MONGOC_TOPOLOGY_SCANNER_BG_RUNNING;
+      _mongoc_metadata_freeze ();
+
+      mongoc_thread_create (&topology->thread, _mongoc_topology_run_background,
+                            topology);
    }
 
-   topology->scanner_state = MONGOC_TOPOLOGY_SCANNER_BG_RUNNING;
-   _mongoc_metadata_freeze ();
-
-   mongoc_thread_create (&topology->thread, _mongoc_topology_run_background,
-                         topology);
-done:
    mongoc_mutex_unlock (&topology->mutex);
    return true;
 }
