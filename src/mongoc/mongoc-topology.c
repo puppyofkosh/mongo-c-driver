@@ -115,6 +115,7 @@ _mongoc_topology_scanner_cb (uint32_t      id,
       /* The processing of the ismaster results above may have added/removed
        * server descriptions. We need to reconcile that with our monitoring agents
        */
+
       mongoc_topology_reconcile(topology);
 
       /* TODO only wake up all clients if we found any topology changes */

@@ -17,10 +17,10 @@
 
 #include <bson.h>
 
-#include "mongoc-metadata-private.h"
 #include "mongoc-config.h"
 #include "mongoc-counters-private.h"
 #include "mongoc-init.h"
+#include "mongoc-metadata-private.h"
 #ifdef MONGOC_ENABLE_SSL
 # include "mongoc-scram-private.h"
 # include "mongoc-ssl.h"
