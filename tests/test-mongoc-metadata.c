@@ -22,6 +22,8 @@
 #include "TestSuite.h"
 #include "test-libmongoc.h"
 #include "test-conveniences.h"
+#include "mock_server/future.h"
+#include "mock_server/future-functions.h"
 #include "mock_server/mock-server.h"
 
 /*
@@ -95,31 +97,46 @@ static void
 test_mongoc_metadata_too_big (void)
 {
    mongoc_client_t *client;
+   mock_server_t *server;
+   mongoc_uri_t *uri;
+   future_t *future;
+   request_t *request;
    bson_t *ismaster_doc;
    bson_iter_t iter;
-   bson_error_t error;
 
    enum { BUFFER_SIZE = METADATA_MAX_SIZE };
    char big_string[BUFFER_SIZE];
-   bool ret;
    uint32_t len;
    const uint8_t *dummy;
+
+   server = mock_server_new ();
+   mock_server_auto_ismaster (server, "{'ok': 1, 'ismaster': true}");
+   mock_server_run (server);
 
    _reset_metadata ();
 
    memset (big_string, 'a', BUFFER_SIZE - 1);
    big_string[BUFFER_SIZE - 1] = '\0';
-
    ASSERT (mongoc_metadata_append (NULL, NULL, big_string));
-   client = test_framework_client_new ();
+
+   uri = mongoc_uri_copy (mock_server_get_uri (server));
+   client = mongoc_client_new_from_uri (uri);
 
    ASSERT (mongoc_client_set_appname (client, "my app"));
 
-   /* Send a ping */
-   ret = mongoc_client_command_simple (client, "admin",
-                                       tmp_bson ("{'ping': 1}"), NULL,
-                                       NULL, &error);
-   ASSERT (ret);
+   /* Send a ping, mock server deals with it */
+   future = future_client_command_simple (client,
+                                          "admin",
+                                          tmp_bson ("{'ping': 1}"),
+                                          NULL,
+                                          NULL,
+                                          NULL);
+   request = mock_server_receives_command (server, "admin",
+                                           MONGOC_QUERY_SLAVE_OK,
+                                           "{'ping': 1}");
+   mock_server_replies_simple (request, "{'ok': 1}");
+
+   ASSERT (future_get_bool (future));
 
    /* Make sure the client's isMaster with metadata isn't too big */
    ismaster_doc = &client->topology->scanner->ismaster_cmd_with_metadata,
@@ -132,7 +149,11 @@ test_mongoc_metadata_too_big (void)
    /* Should truncate the platform field so we fit exactly */
    ASSERT (len == METADATA_MAX_SIZE);
 
+   future_destroy (future);
+   request_destroy (request);
    mongoc_client_destroy (client);
+   mongoc_uri_destroy (uri);
+   mock_server_destroy (server);
 
    /* So later tests don't have "aaaaa..." as the md platform string */
    _reset_metadata ();

@@ -1700,12 +1700,16 @@ test_mongoc_client_application_metadata (void)
    char big_string[BUFFER_SIZE];
    const char *short_string = "hallo thar";
    mongoc_client_t *client;
+   mock_server_t *server;
+   mongoc_uri_t *uri;
+
+   server = mock_server_new ();
+   mock_server_run (server);
+   uri = mongoc_uri_copy (mock_server_get_uri (server));
+   client = mongoc_client_new_from_uri (uri);
 
    memset (big_string, 'a', BUFFER_SIZE - 1);
    big_string[BUFFER_SIZE - 1] = '\0';
-
-   client = test_framework_client_new ();
-   ASSERT (client);
 
    /* Check that setting too long a name causes failure */
    ASSERT (!mongoc_client_set_appname (client, big_string));
@@ -1717,6 +1721,8 @@ test_mongoc_client_application_metadata (void)
    ASSERT (!mongoc_client_set_appname (client, "a"));
 
    mongoc_client_destroy (client);
+   mongoc_uri_destroy (uri);
+   mock_server_destroy (server);
 }
 
 static void
@@ -1761,6 +1767,7 @@ _respond_to_ping (future_t      *future,
                   mock_server_t *server)
 {
    request_t *request;
+
    ASSERT (future);
 
    request = mock_server_receives_command (server, "admin",
