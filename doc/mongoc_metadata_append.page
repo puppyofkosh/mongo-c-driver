@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<page xmlns="http://projectmallard.org/1.0/"
+      type="topic"
+      style="function"
+      xmlns:api="http://projectmallard.org/experimental/api/"
+      xmlns:ui="http://projectmallard.org/experimental/ui/"
+      id="mongoc_metadata_append">
+  <info>
+    <link type="guide" xref="" group="function"/>
+  </info>
+  <title>mongoc_metadata_append()</title>
+
+  <section id="synopsis">
+    <title>Synopsis</title>
+    <synopsis><code mime="text/x-csrc"><![CDATA[bool
+mongoc_metadata_append (const char *driver_name,
+                        const char *driver_version,
+                        const char *platform);
+]]></code></synopsis>
+  </section>
+
+  <section id="description">
+    <title>Description</title>
+    <p>This function is intended for use by drivers which wrap the C Driver.</p>
+    <p>This function will store the given strings as metadata about the system and driver version. These values, along with other metadata collected during <code xref="mongoc_init">mongoc_init</code> will be sent to the server as part of the initial connection handshake (<link href="https://docs.mongodb.org/manual/reference/command/isMaster/">"isMaster"</link>). If this function is called more than once, or after connecting to a mongod instance, it will do nothing and return false. It will return true if it successfully sets the values.</p>
+    <p>The strings are copied, and don't have to remain valid after the call to <code>mongoc_metadata_append()</code>. The entire strings are not necessarily copied (they may be truncated).</p>
+    <p>All arguments are optional.</p>
+  </section>
+
+  <section id="parameters">
+    <title>Parameters</title>
+    <table>
+      <tr><td><p>driver_name</p></td><td><p>An optional string storing the name of the wrapping driver.</p></td></tr>
+      <tr><td><p>driver_version</p></td><td><p>An optional string storing the version of the wrapping driver.</p></td></tr>
+      <tr><td><p>platform</p></td><td><p>An optional string storing any information about the current platform, for example configure options or compile flags.</p></td></tr>
+    </table>
+  </section>
+</page>
