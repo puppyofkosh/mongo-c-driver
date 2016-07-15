@@ -188,6 +188,7 @@ test_mongoc_metadata_cannot_send (void)
    server = mock_server_new ();
    mock_server_run (server);
    uri = mongoc_uri_copy (mock_server_get_uri (server));
+   mongoc_uri_set_option_as_int32 (uri, "heartbeatFrequencyMS", 500);
    pool = mongoc_client_pool_new (uri);
 
    /* Pop a client to trigger the topology scanner */
@@ -195,6 +196,24 @@ test_mongoc_metadata_cannot_send (void)
    request = mock_server_receives_ismaster (server);
 
    /* Make sure the isMaster request DOESN'T have a metadata field: */
+   ASSERT (request);
+   request_doc = request_get_doc (request, 0);
+   ASSERT (request_doc);
+   ASSERT (bson_has_field (request_doc, "isMaster"));
+   ASSERT (!bson_has_field (request_doc, METADATA_FIELD));
+
+   mock_server_replies_simple (request, server_reply);
+   request_destroy (request);
+
+   /* Cause failure on client side */
+   request = mock_server_receives_ismaster (server);
+   ASSERT (request);
+   mock_server_hangs_up (request);
+   request_destroy (request);
+
+   /* Make sure the isMaster request still DOESN'T have a metadata field
+    * on subsequent heartbeats. */
+   request = mock_server_receives_ismaster (server);
    ASSERT (request);
    request_doc = request_get_doc (request, 0);
    ASSERT (request_doc);

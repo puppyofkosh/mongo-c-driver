@@ -71,6 +71,8 @@ static bson_t *
 _get_ismaster_doc (mongoc_topology_scanner_t      *ts,
                    mongoc_topology_scanner_node_t *node)
 {
+   bool ismaster_with_metadata_ok = true;
+
    if (node->last_used != -1 && node->last_failed == -1) {
       /* The node's been used before and not failed recently */
       return &ts->ismaster_cmd;
@@ -79,10 +81,14 @@ _get_ismaster_doc (mongoc_topology_scanner_t      *ts,
    /* If this is the first time using the node or if it's the first time
     * using it after a failure, resend metadata */
    if (bson_empty (&ts->ismaster_cmd_with_metadata)) {
-      if (!_build_ismaster_with_metadata (ts)) {
-         MONGOC_WARNING ("Metadata doc too big, not including in isMaster");
-         return &ts->ismaster_cmd;
-      }
+      ismaster_with_metadata_ok = _build_ismaster_with_metadata (ts);
+   }
+
+   /* If the doc turned out to be too big, and we couldn't prevent it */
+   if (!ismaster_with_metadata_ok ||
+       ts->ismaster_cmd_with_metadata.len > METADATA_MAX_SIZE) {
+      MONGOC_WARNING ("Metadata doc too big, not including in isMaster");
+      return &ts->ismaster_cmd;
    }
 
    return &ts->ismaster_cmd_with_metadata;
