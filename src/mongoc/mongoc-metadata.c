@@ -16,12 +16,11 @@
 
 #include <bson.h>
 
-#ifdef _POSIX_VERSION
+#ifndef _WIN32
 #include <sys/utsname.h>
 #endif
 
 #include "mongoc-metadata.h"
-#include "mongoc-metadata-os-private.h"
 #include "mongoc-metadata-private.h"
 #include "mongoc-client.h"
 #include "mongoc-client-private.h"
@@ -38,49 +37,44 @@
 static mongoc_metadata_t gMongocMetadata;
 
 
-#ifdef MONGOC_OS_IS_LINUX
-static char *
-_get_distro_name (void)
+#ifdef _WIN32
+static void
+_fill_os_type (mongoc_metadata_t *metadata)
 {
-   /* TODO: FIXME: Will be part of a future CR */
-   /* This will likely have its own file at some point. */
-   return bson_strndup ("Linux", METADATA_OS_NAME_MAX);
+   metadata->os_type = bson_strndup ("Windows", METADATA_OS_TYPE_MAX);
 }
-#endif
-
-static char *
-_get_os_type (void)
+#else
+static void
+_fill_os_type (mongoc_metadata_t *metadata)
 {
-#ifdef MONGOC_OS_TYPE
-   return bson_strndup (MONGOC_OS_TYPE, METADATA_OS_TYPE_MAX);
-#endif
-   return bson_strndup ("unknown", METADATA_OS_TYPE_MAX);
-}
-
-static char *
-_get_os_name (void)
-{
-#ifdef MONGOC_OS_NAME
-   return bson_strndup (MONGOC_OS_NAME, METADATA_OS_NAME_MAX);
-#elif defined (MONGOC_OS_IS_LINUX)
-   return _get_distro_name ();
-#elif defined (_POSIX_VERSION)
    struct utsname system_info;
+   int res;
 
-   if (uname (&system_info) >= 0) {
-      return bson_strndup (system_info.sysname, METADATA_OS_NAME_MAX);
+   res = uname (&system_info);
+
+   if (res != 0) {
+      MONGOC_ERROR ("uname() failed with error %d", errno);
+      metadata->os_type = NULL;
+      return;
    }
+
+   metadata->os_type = bson_strndup (system_info.sysname,
+                                     METADATA_OS_TYPE_MAX);
+}
 #endif
 
-   return NULL;
+static void
+_free_os_type (mongoc_metadata_t *metadata)
+{
+   bson_free (metadata->os_type);
 }
 
 static void
 _get_system_info (mongoc_metadata_t *metadata)
 {
    /* Dummy function to be filled in later */
-   metadata->os_type = _get_os_type ();
-   metadata->os_name = _get_os_name ();
+   _fill_os_type (metadata);
+   metadata->os_name = NULL;
    metadata->os_version = NULL;
    metadata->os_architecture = NULL;
    /* General idea of what these are supposed to be: */
@@ -92,7 +86,7 @@ _get_system_info (mongoc_metadata_t *metadata)
 static void
 _free_system_info (mongoc_metadata_t *meta)
 {
-   bson_free (meta->os_type);
+   _free_os_type (meta);
    bson_free (meta->os_name);
    bson_free (meta->os_version);
    bson_free (meta->os_architecture);
