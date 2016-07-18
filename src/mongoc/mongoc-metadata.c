@@ -54,7 +54,7 @@ _fill_os_type (mongoc_metadata_t *metadata)
 
    if (res != 0) {
       MONGOC_ERROR ("uname() failed with error %d", errno);
-      metadata->os_type = NULL;
+      metadata->os_type = bson_strndup ("unknown", METADATA_OS_TYPE_MAX);
       return;
    }
 
