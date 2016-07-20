@@ -54,10 +54,6 @@ test_mongoc_metadata_append_success (void)
    ASSERT (mongoc_metadata_append ("php driver", "version abc",
                                    "./configure -nottoomanyflags"));
 
-   /* (TEST) */
-   fprintf (stderr, "OS Type: %s\n", _mongoc_metadata_get ()->os_type);
-   /* */
-
    _reset_metadata ();
    /* Set each field to some really long string, which should
     * get truncated. We shouldn't fail or crash */
