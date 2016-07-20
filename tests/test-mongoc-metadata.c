@@ -56,6 +56,7 @@ test_mongoc_metadata_append_success (void)
 
    /* (TEST) */
    fprintf (stderr, "OS Type: %s\n", _mongoc_metadata_get ()->os_type);
+   fprintf (stderr, "OS Name: %s\n", _mongoc_metadata_get ()->os_name);
    /* */
 
    _reset_metadata ();

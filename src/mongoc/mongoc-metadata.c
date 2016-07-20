@@ -26,6 +26,7 @@
 #include "mongoc-client-private.h"
 #include "mongoc-error.h"
 #include "mongoc-log.h"
+#include "mongoc-metadata-os-private.h"
 #include "mongoc-version.h"
 #include "mongoc-util-private.h"
 
@@ -37,36 +38,48 @@
 static mongoc_metadata_t gMongocMetadata;
 
 
-#ifdef _WIN32
 static char *
 _get_os_type (void)
 {
-   return bson_strndup ("Windows", METADATA_OS_TYPE_MAX);
-}
+   const char *ostype = NULL;
+
+#ifdef MONGOC_OS_TYPE
+   ostype = MONGOC_OS_TYPE;
 #else
+   /* Only going to call uname() for one. Defaulting to get_os_name() */
+   ostype = "unknown";
+#endif
+
+   return bson_strndup (ostype, METADATA_OS_TYPE_MAX);
+}
+
 static char *
-_get_os_type (void)
+_get_os_name (void)
 {
    struct utsname system_info;
    int res;
-   const char *s = "unknown";
+   const char *osname = NULL;
 
+#ifdef MONGOC_OS_NAME
+   osname = MONGOC_OS_NAME;
+#else
    res = uname (&system_info);
-
    if (res >= 0) {
-      s = system_info.sysname;
+      osname = system_info.sysname;
+   } else {
+      osname = "unknown";
    }
-
-   return bson_strndup (s, METADATA_OS_TYPE_MAX);
-}
 #endif
+
+   return bson_strndup (osname, METADATA_OS_TYPE_MAX);
+}
 
 static void
 _get_system_info (mongoc_metadata_t *metadata)
 {
    /* Dummy function to be filled in later */
    metadata->os_type = _get_os_type ();
-   metadata->os_name = NULL;
+   metadata->os_name = _get_os_name ();
    metadata->os_version = NULL;
    metadata->os_architecture = NULL;
    /* General idea of what these are supposed to be: */
