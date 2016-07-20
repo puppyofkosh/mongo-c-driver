@@ -49,16 +49,15 @@ _fill_os_type (mongoc_metadata_t *metadata)
 {
    struct utsname system_info;
    int res;
+   const char *s = "unknown";
 
    res = uname (&system_info);
 
-   if (res != 0) {
-      metadata->os_type = bson_strndup ("unknown", METADATA_OS_TYPE_MAX);
-      return;
+   if (res == 0) {
+      s = system_info.sysname;
    }
 
-   metadata->os_type = bson_strndup (system_info.sysname,
-                                     METADATA_OS_TYPE_MAX);
+   metadata->os_type = bson_strndup (s, METADATA_OS_TYPE_MAX);
 }
 #endif
 
