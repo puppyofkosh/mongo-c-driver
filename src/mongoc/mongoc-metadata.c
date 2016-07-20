@@ -16,7 +16,7 @@
 
 #include <bson.h>
 
-#ifndef _WIN32
+#if defined (_POSIX_VERSION)
 #include <sys/utsname.h>
 #endif
 
@@ -38,14 +38,14 @@ static mongoc_metadata_t gMongocMetadata;
 
 
 #ifdef _WIN32
-static void
-_fill_os_type (mongoc_metadata_t *metadata)
+static char *
+_get_os_type (void)
 {
-   metadata->os_type = bson_strndup ("Windows", METADATA_OS_TYPE_MAX);
+   return bson_strndup ("Windows", METADATA_OS_TYPE_MAX);
 }
 #else
-static void
-_fill_os_type (mongoc_metadata_t *metadata)
+static char *
+_get_os_type (void)
 {
    struct utsname system_info;
    int res;
@@ -53,25 +53,19 @@ _fill_os_type (mongoc_metadata_t *metadata)
 
    res = uname (&system_info);
 
-   if (res == 0) {
+   if (res >= 0) {
       s = system_info.sysname;
    }
 
-   metadata->os_type = bson_strndup (s, METADATA_OS_TYPE_MAX);
+   return bson_strndup (s, METADATA_OS_TYPE_MAX);
 }
 #endif
-
-static void
-_free_os_type (mongoc_metadata_t *metadata)
-{
-   bson_free (metadata->os_type);
-}
 
 static void
 _get_system_info (mongoc_metadata_t *metadata)
 {
    /* Dummy function to be filled in later */
-   _fill_os_type (metadata);
+   metadata->os_type = _get_os_type ();
    metadata->os_name = NULL;
    metadata->os_version = NULL;
    metadata->os_architecture = NULL;
@@ -84,7 +78,7 @@ _get_system_info (mongoc_metadata_t *metadata)
 static void
 _free_system_info (mongoc_metadata_t *meta)
 {
-   _free_os_type (meta);
+   bson_free (meta->os_type);
    bson_free (meta->os_name);
    bson_free (meta->os_version);
    bson_free (meta->os_architecture);
