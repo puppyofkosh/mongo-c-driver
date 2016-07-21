@@ -28,9 +28,22 @@
 #   else
 #      define MONGOC_OS_NAME "Windows"
 #   endif
+
+/* osx and iphone defines __APPLE__ and __MACH__, but not __unix__ */
+#elif defined(__APPLE__) && defined(__MACH__) && !defined (__unix__)
+#   define MONGOC_OS_TYPE "Darwin"
+#   include <TargetConditionals.h>
+#   if TARGET_IPHONE_SIMULATOR == 1
+#      define MONGOC_OS_NAME "iOS Simulator"
+#   elif TARGET_OS_IPHONE == 1
+#      define MONGOC_OS_NAME "iOS"
+#   elif TARGET_OS_MAC == 1
+#      define MONGOC_OS_NAME "macOS"
+#   endif
+
 /* Need to check if __unix is defined since sun and hpux always have __unix,
  * but not necessarily __unix__ defined. */
-#elif defined (__unix__) || defined (__unix) || (defined (__APPLE__) && defined (__MACH__))
+#elif defined (__unix__) || defined (__unix)
 #   include <sys/param.h>
 #   if defined (__linux__)
 #      if defined (__ANDROID__)
@@ -52,16 +65,6 @@
 #      else
 /*        Don't define OS_NAME. We'll use uname to figure it out. */
 #      endif
-#   elif defined(__APPLE__) && defined(__MACH__)
-#      define MONGOC_OS_TYPE "Darwin"
-#      include <TargetConditionals.h>
-#      if TARGET_IPHONE_SIMULATOR == 1
-#         define MONGOC_OS_NAME "iOS Simulator"
-#      elif TARGET_OS_IPHONE == 1
-#         define MONGOC_OS_NAME "iOS"
-#      elif TARGET_OS_MAC == 1
-#         define MONGOC_OS_NAME "macOS"
-#      endif
 #   else
 #      define MONGOC_OS_TYPE "Unix"
 #      if defined (_AIX)
@@ -75,6 +78,7 @@
 #      endif
 
 #   endif
+
 #endif
 
 #endif

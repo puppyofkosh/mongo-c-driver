@@ -53,7 +53,9 @@ _get_os_type (void)
 static char *
 _get_os_name (void)
 {
+#if !defined (MONGOC_OS_NAME) && defined (_POSIX_VERSION)
    struct utsname system_info;
+#endif
    const char *osname = "unknown";
 
 #ifdef MONGOC_OS_NAME
