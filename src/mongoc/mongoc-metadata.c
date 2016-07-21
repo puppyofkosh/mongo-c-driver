@@ -41,13 +41,10 @@ static mongoc_metadata_t gMongocMetadata;
 static char *
 _get_os_type (void)
 {
-   const char *ostype = NULL;
+   const char *ostype = "unknown";
 
 #ifdef MONGOC_OS_TYPE
    ostype = MONGOC_OS_TYPE;
-#else
-   /* Only going to call uname() for one. Defaulting to get_os_name() */
-   ostype = "unknown";
 #endif
 
    return bson_strndup (ostype, METADATA_OS_TYPE_MAX);
@@ -57,17 +54,13 @@ static char *
 _get_os_name (void)
 {
    struct utsname system_info;
-   int res;
-   const char *osname = NULL;
+   const char *osname = "unknown";
 
 #ifdef MONGOC_OS_NAME
    osname = MONGOC_OS_NAME;
-#else
-   res = uname (&system_info);
-   if (res >= 0) {
+#elif defined (_POSIX_VERSION)
+   if (uname (&system_info) >= 0) {
       osname = system_info.sysname;
-   } else {
-      osname = "unknown";
    }
 #endif
 
