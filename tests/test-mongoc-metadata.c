@@ -59,6 +59,10 @@ test_mongoc_metadata_append_success (void)
    fprintf (stderr, "OS Name: %s\n", _mongoc_metadata_get ()->os_name);
    /* */
 
+   ASSERT (_mongoc_metadata_get ()->os_type);
+   ASSERT (strlen (_mongoc_metadata_get ()->os_type) > 0);
+   /* Not checking os_name, as the spec says it can be NULL. */
+
    _reset_metadata ();
    /* Set each field to some really long string, which should
     * get truncated. We shouldn't fail or crash */

@@ -37,6 +37,13 @@
  */
 static mongoc_metadata_t gMongocMetadata;
 
+static char *
+_get_distro_name (void)
+{
+   /* TODO: FIXME: Will be part of a future CR */
+   /* This will likely have its own file at some point. */
+   return bson_strndup ("Linux", METADATA_OS_NAME_MAX);
+}
 
 static char *
 _get_os_type (void)
@@ -78,6 +85,12 @@ _get_os_name (void)
    if (ret) {
       return ret;
    }
+
+#ifdef MONGOC_OS_TYPE
+   if (!strcmp ("Linux", MONGOC_OS_TYPE)) {
+      return _get_distro_name ();
+   }
+#endif
 
    return _get_os_name_from_uname ();
 }

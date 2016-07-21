@@ -33,14 +33,18 @@
 #elif defined(__APPLE__) && defined(__MACH__) && !defined (__unix__)
 #   define MONGOC_OS_TYPE "Darwin"
 #   include <TargetConditionals.h>
-#   if TARGET_IPHONE_SIMULATOR == 1
+#   if defined (TARGET_IPHONE_SIMULATOR) && TARGET_IPHONE_SIMULATOR == 1
 #      define MONGOC_OS_NAME "iOS Simulator"
-#   elif TARGET_OS_IPHONE == 1
+#   elif defined (TARGET_OS_IOS) && TARGET_OS_IOS == 1
 #      define MONGOC_OS_NAME "iOS"
-#   elif TARGET_OS_MAC == 1
+#   elif defined (TARGET_OS_MAC) && TARGET_OS_MAC == 1
 #      define MONGOC_OS_NAME "macOS"
-#   elif TARGET_OS_TV == 1
+#   elif defined (TARGET_OS_TV) && TARGET_OS_TV == 1
 #      define MONGOC_OS_NAME "tvOS"
+#   elif defined (TARGET_OS_WATCH) && TARGET_OS_WATCH == 1
+#      define MONGOC_OS_NAME "watchOS"
+#   else
+/*     Fall back to uname () */
 #   endif
 
 /* Need to check if __unix is defined since sun and hpux always have __unix,
@@ -78,7 +82,6 @@
 #      else
 /*        Don't set OS name. We'll just fall back to uname. */
 #      endif
-
 #   endif
 
 #endif
