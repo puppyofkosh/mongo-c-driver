@@ -48,29 +48,26 @@ _get_distro_name (void)
 static char *
 _get_os_type (void)
 {
-   const char *ostype = "unknown";
-
 #ifdef MONGOC_OS_TYPE
-   ostype = MONGOC_OS_TYPE;
+   return bson_strndup (MONGOC_OS_TYPE, METADATA_OS_TYPE_MAX);
 #endif
-
-   return bson_strndup (ostype, METADATA_OS_TYPE_MAX);
+   return bson_strndup ("unknown", METADATA_OS_TYPE_MAX);
 }
 
 static char *
 _get_os_name_from_uname (void)
 {
-#ifdef _POSIX_VERSION
+#ifdef MONGOC_OS_NAME
+   return bson_strndup (MONGOC_OS_NAME, METADATA_OS_NAME_MAX);
+#elif _POSIX_VERSION
    struct utsname system_info;
 
    if (uname (&system_info) >= 0) {
       return bson_strndup (system_info.sysname, METADATA_OS_NAME_MAX);
    }
+#endif
 
    return NULL;
-#else
-   return NULL;
-#endif
 }
 
 static char *
