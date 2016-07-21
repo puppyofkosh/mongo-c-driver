@@ -39,6 +39,8 @@
 #      define MONGOC_OS_NAME "iOS"
 #   elif TARGET_OS_MAC == 1
 #      define MONGOC_OS_NAME "macOS"
+#   elif TARGET_OS_TV == 1
+#      define MONGOC_OS_NAME "tvOS"
 #   endif
 
 /* Need to check if __unix is defined since sun and hpux always have __unix,
@@ -47,7 +49,7 @@
 #   include <sys/param.h>
 #   if defined (__linux__)
 #      if defined (__ANDROID__)
-#         define MONGOC_OS_TYPE "Android"
+#         define MONGOC_OS_TYPE "Linux (Android)"
 #      else
 #         define MONGOC_OS_TYPE "Linux"
 #      endif

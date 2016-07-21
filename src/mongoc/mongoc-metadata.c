@@ -51,22 +51,35 @@ _get_os_type (void)
 }
 
 static char *
+_get_os_name_from_uname (void)
+{
+#ifdef _POSIX_VERSION
+   struct utsname system_info;
+
+   if (uname (&system_info) >= 0) {
+      return bson_strndup (system_info.sysname, METADATA_OS_NAME_MAX);
+   }
+
+   return NULL;
+#else
+   return NULL;
+#endif
+}
+
+static char *
 _get_os_name (void)
 {
-#if !defined (MONGOC_OS_NAME) && defined (_POSIX_VERSION)
-   struct utsname system_info;
-#endif
-   const char *osname = "unknown";
+   char *ret = NULL;
 
 #ifdef MONGOC_OS_NAME
-   osname = MONGOC_OS_NAME;
-#elif defined (_POSIX_VERSION)
-   if (uname (&system_info) >= 0) {
-      osname = system_info.sysname;
-   }
+   ret = bson_strndup (MONGOC_OS_NAME, METADATA_OS_NAME_MAX);
 #endif
 
-   return bson_strndup (osname, METADATA_OS_TYPE_MAX);
+   if (ret) {
+      return ret;
+   }
+
+   return _get_os_name_from_uname ();
 }
 
 static void
