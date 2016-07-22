@@ -16,7 +16,7 @@
 
 #include <bson.h>
 
-#if defined (_POSIX_VERSION)
+#ifdef _POSIX_VERSION
 #include <sys/utsname.h>
 #endif
 
