@@ -302,16 +302,6 @@ set (HEADERS
    ${SOURCE_DIR}/src/mongoc/mongoc-version-functions.h
    ${SOURCE_DIR}/src/mongoc/mongoc-write-concern.h
 )
-if (ENABLE_EXPERIMENTAL_FEATURES)
-   set(HEADERS ${HEADERS}
-        ${SOURCE_DIR}/src/mongoc/mongoc-metadata.h
-        ${SOURCE_DIR}/src/mongoc/mongoc-metadata-os-private.h
-        ${SOURCE_DIR}/src/mongoc/mongoc-metadata-private.h
-   )
-   set(SOURCES ${SOURCES}
-        ${SOURCE_DIR}/src/mongoc/mongoc-metadata.c
-   )
-endif ()
 
 if (NOT ENABLE_SSL STREQUAL OFF)
    set (HEADERS ${HEADERS}
@@ -501,13 +491,6 @@ set(test-libmongoc-sources
    ${SOURCE_DIR}/tests/TestSuite.c
 )
 
-if (ENABLE_EXPERIMENTAL_FEATURES)
-   set(test-libmongoc-sources ${test-libmongoc-sources}
-      ${SOURCE_DIR}/tests/test-mongoc-max-staleness.c
-      ${SOURCE_DIR}/tests/test-mongoc-metadata.c
-   )
-endif ()
-
 if (MONGOC_ENABLE_SSL)
    set(test-libmongoc-sources ${test-libmongoc-sources}
       ${SOURCE_DIR}/tests/test-x509.c
@@ -524,6 +507,13 @@ endif()
 if (MONGOC_ENABLE_SASL)
    set(test-libmongoc-sources ${test-libmongoc-sources}
       ${SOURCE_DIR}/tests/test-sasl.c
+   )
+endif ()
+
+if (ENABLE_EXPERIMENTAL_FEATURES)
+   set(test-libmongoc-sources ${test-libmongoc-sources}
+      ${SOURCE_DIR}/tests/test-mongoc-max-staleness.c
+      ${SOURCE_DIR}/tests/test-mongoc-metadata.c
    )
 endif ()
 

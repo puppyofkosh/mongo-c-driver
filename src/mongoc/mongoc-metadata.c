@@ -21,12 +21,12 @@
 #endif
 
 #include "mongoc-metadata.h"
+#include "mongoc-metadata-os-private.h"
 #include "mongoc-metadata-private.h"
 #include "mongoc-client.h"
 #include "mongoc-client-private.h"
 #include "mongoc-error.h"
 #include "mongoc-log.h"
-#include "mongoc-metadata-os-private.h"
 #include "mongoc-version.h"
 #include "mongoc-util-private.h"
 
