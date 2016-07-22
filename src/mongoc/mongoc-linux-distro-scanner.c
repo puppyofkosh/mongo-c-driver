@@ -32,8 +32,6 @@ _lsb_copy_val_if_need (const char  *val,
    }
 
    sz = strlen (val) + 1;
-
-   /* Technically we could compute val_len, but these strings are tiny */
    *buffer = bson_malloc (sz);
    bson_strncpy (*buffer, val, sz);
 }
@@ -136,8 +134,7 @@ _mongoc_linux_distro_scanner_parse_lsb (const char  *path,
 
 /*
  * Read whole first line or first 256 bytes, whichever is smaller
- * -path is optional, only used for logging errors
- * -It's your job to free the return value of this function
+ * It's your job to free the return value of this function
  */
 static char *
 _read_first_line_up_to_limit (const char *path)
