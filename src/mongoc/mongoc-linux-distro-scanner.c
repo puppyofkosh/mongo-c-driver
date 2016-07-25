@@ -19,23 +19,12 @@
 #include "mongoc-version.h"
 #include "mongoc-util-private.h"
 
-static void
-_lsb_copy_val_if_need (const char  *val,
-                       char       **buffer)
-{
-   if (*buffer) {
-      /* We've encountered this key more than once. This means the file is
-       * weird, so just keep first copy */
-      return;
-   }
-
-   *buffer = bson_strdup (val);
-}
-
 static bool
-_lsb_process_line (char       **name,
-                   char       **version,
-                   const char  *line)
+_process_line (const char  *name_key,
+               char       **name,
+               const char  *version_key,
+               char       **version,
+               const char  *line)
 {
    size_t key_len;
    const char *equal_sign;
@@ -62,11 +51,11 @@ _lsb_process_line (char       **name,
 
    /* If we find two copies of either key, the *name == NULL check will fail
     * so we will just keep the first value encountered. */
-   if (strncmp (line, "DISTRIB_ID", key_len) == 0) {
-      _lsb_copy_val_if_need (val, name);
+   if (strncmp (line, name_key, key_len) == 0 && ! (*name)) {
+      *name = bson_strdup (val);
       return true;
-   } else if (strncmp (line, "DISTRIB_RELEASE", key_len) == 0) {
-      _lsb_copy_val_if_need (val, version);
+   } else if (strncmp (line, version_key, key_len) == 0 && ! (*version)) {
+      *version = bson_strdup (val);
       return true;
    }
 
@@ -74,10 +63,19 @@ _lsb_process_line (char       **name,
 }
 
 
-bool
-_mongoc_linux_distro_scanner_parse_lsb (const char  *path,
-                                        char       **name,
-                                        char       **version)
+/*
+ * Parse a file of the form:
+ * KEY=VALUE
+ * Looking for name_key and version_key, and storing
+ * their values into *name and *version.
+ * The values in *name and *version must be freed with bson_free.
+ */
+static bool
+_read_key_val_file (const char  *path,
+                    const char  *name_key,
+                    char       **name,
+                    const char  *version_key,
+                    char       **version)
 {
    enum N { bufsize = 4096 };
    char buffer [bufsize];
@@ -116,7 +114,7 @@ _mongoc_linux_distro_scanner_parse_lsb (const char  *path,
 
       cnt += (line_end - line + 1);
 
-      _lsb_process_line (name, version, line);
+      _process_line (name_key, name, version_key, version, line);
 
       if (*version && *name) {
          /* No point in reading any more */
@@ -126,6 +124,30 @@ _mongoc_linux_distro_scanner_parse_lsb (const char  *path,
 
    fclose (f);
    return *version && *name;
+}
+
+bool
+_mongoc_linux_distro_scanner_read_lsb (const char  *path,
+                                               char       **name,
+                                               char       **version)
+{
+   return _read_key_val_file (path,
+                              "DISTRIB_ID",
+                              name,
+                              "DISTRIB_RELEASE",
+                              version);
+}
+
+bool
+_mongoc_linux_distro_scanner_read_etc_os_release (const char  *path,
+                                                  char       **name,
+                                                  char       **version)
+{
+   return _read_key_val_file (path,
+                              "ID",
+                              name,
+                              "VERSION_ID",
+                              version);
 }
 
 /*
@@ -214,23 +236,22 @@ _read_64_bytes_or_first_line (const char *path)
 }
 
 char *
-_mongoc_linux_distro_scanner_read_osrelease (const char *path)
+_mongoc_linux_distro_scanner_read_proc_osrelease (const char *path)
 {
    return _read_64_bytes_or_first_line (path);
 }
 
 char *
-_mongoc_linux_distro_scanner_read_release_file (const char *path)
+_mongoc_linux_distro_scanner_read_generic_release_file (const char *path)
 {
    return _read_64_bytes_or_first_line (path);
 }
 
 static char *
-_find_and_read_release_file ()
+_read_generic_release_file ()
 {
    const char *path;
    const char *paths [] = {
-      "/etc/system-release",
       "/etc/redhat-release",
       "/etc/novell-release",
       "/etc/gentoo-release",
@@ -240,7 +261,6 @@ _find_and_read_release_file ()
       "/etc/debian_release",
       "/etc/slackware-version",
       "/etc/centos-release",
-      "/etc/os-release",
       NULL,
    };
 
@@ -250,7 +270,7 @@ _find_and_read_release_file ()
       return NULL;
    }
 
-   return _mongoc_linux_distro_scanner_read_release_file (path);
+   return _mongoc_linux_distro_scanner_read_generic_release_file (path);
 }
 
 bool
@@ -259,18 +279,31 @@ _mongoc_linux_distro_scanner_get_distro (char **name,
 {
    const char *lsb_path = "/etc/lsb-release";
    const char *osrelease_path = "/proc/sys/kernel/osrelease";
+   const char *etc_os_release_path = "/etc/os-release";
 
    *name = NULL;
    *version = NULL;
 
-   if (_mongoc_linux_distro_scanner_parse_lsb (lsb_path, name, version)) {
+   _mongoc_linux_distro_scanner_read_etc_os_release (etc_os_release_path,
+                                                     name, version);
+   if (*name && *version) {
+      return true;
+   }
+
+   _mongoc_linux_distro_scanner_read_lsb (lsb_path, name, version);
+   if (*name && *version) {
       return true;
    }
 
    /* Otherwise get the name from the "release" file and version from
     * /proc/sys/kernel/osrelease */
-   *name = _find_and_read_release_file ();
-   *version = _mongoc_linux_distro_scanner_read_osrelease (osrelease_path);
+   if (*name == NULL) {
+      *name = _find_and_read_release_file ();
+   }
+
+   if (*version == NULL) {
+      *version = _mongoc_linux_distro_scanner_read_proc_osrelease (osrelease_path);
+   }
 
    return (*name != NULL) && (*version != NULL);
 }

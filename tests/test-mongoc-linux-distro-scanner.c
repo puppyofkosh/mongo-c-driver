@@ -24,13 +24,13 @@
 
 
 static void
-test_parse_lsb ()
+test_read_lsb ()
 {
    char *name = NULL;
    char *version = NULL;
    bool ret;
 
-   ret = _mongoc_linux_distro_scanner_parse_lsb (
+   ret = _mongoc_linux_distro_scanner_read_lsb (
       OS_RELEASE_FILE_DIR "/example-lsb-file.txt",
       &name, &version);
 
@@ -47,27 +47,57 @@ test_parse_lsb ()
 }
 
 static void
-test_release_file ()
+test_read_etc_os_release ()
 {
-   char *name;
-   char *ver;
-   const char *release_path = OS_RELEASE_FILE_DIR "/example-release-file.txt";
-   const char *ver_path = OS_RELEASE_FILE_DIR "/example-os-version.txt";
+   char *name = NULL;
+   char *version = NULL;
+   bool ret;
 
-   name = _mongoc_linux_distro_scanner_read_release_file (release_path);
+   ret = _mongoc_linux_distro_scanner_read_etc_os_release (
+      OS_RELEASE_FILE_DIR "/example-etc-os-release.txt",
+      &name, &version);
 
-   /* We expect to get the first line of the file (it's NOT parsing the file
-    * because we're not sure what format it is */
+   ASSERT (ret);
+
    ASSERT (name);
-   ASSERT (strcmp (name, "NAME=\"Ubuntu\"") == 0);
+   ASSERT (strcmp (name, "fedora") == 0);
+
+   ASSERT (version);
+   ASSERT (strcmp (version, "17") == 0);
+
+   bson_free (name);
+   bson_free (version);
+
+}
+
+static void
+test_read_proc_osrelease ()
+{
+   char *ver;
+   const char *ver_path = OS_RELEASE_FILE_DIR "/example-proc-osrelease.txt";
 
    /* Normally would read from "/proc/sys/kernel/osrelease" */
    ver = _mongoc_linux_distro_scanner_read_osrelease (ver_path);
    ASSERT (ver);
    ASSERT (strcmp (ver, "2.2.14-5.0") == 0);
 
-   bson_free (name);
    bson_free (ver);
+}
+
+static void
+test_read_generic_release_file ()
+{
+   char *name;
+   const char *release_path = OS_RELEASE_FILE_DIR "/example-release-file.txt";
+
+   name = _mongoc_linux_distro_scanner_read_release_file (release_path);
+
+   /* We expect to get the first line of the file (it's NOT parsing the file
+    * because we're not sure what format it is */
+   ASSERT (name);
+   ASSERT (strcmp (name, "Fedora release 8 (Werewolf)") == 0);
+
+   bson_free (name);
 }
 
 /* We only expect this function to actually read anything on linux platforms.
@@ -104,7 +134,7 @@ void
 test_linux_distro_scanner_install (TestSuite *suite)
 {
    TestSuite_Add (suite, "/LinuxDistroScanner/parse_lsb",
-                  test_parse_lsb);
+                  test_read_lsb);
    TestSuite_Add (suite, "/LinuxDistroScanner/read_release_file",
                   test_release_file);
    TestSuite_Add (suite, "/LinuxDistroScanner/test_distro_scanner_reads",

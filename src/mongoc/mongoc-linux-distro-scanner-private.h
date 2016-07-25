@@ -24,17 +24,22 @@ bool
 _mongoc_linux_distro_scanner_get_distro (char **name,
                                          char **version);
 
+/* These functions are exposed so we can test them separately. */
 bool
-_mongoc_linux_distro_scanner_parse_lsb (const char  *path,
-                                        char       **name,
-                                        char       **version);
+_mongoc_linux_distro_scanner_read_lsb (const char  *path,
+                                       char       **name,
+                                       char       **version);
 
-/* These are exposed privately so we can test them using example files. */
-char *
-_mongoc_linux_distro_scanner_read_release_file (const char *path);
+bool
+_mongoc_linux_distro_scanner_read_etc_os_release (const char  *path,
+                                                  char       **name,
+                                                  char       **version);
 
 char *
-_mongoc_linux_distro_scanner_read_osrelease (const char *path);
+_mongoc_linux_distro_scanner_read_proc_osrelease (const char *path);
+
+char *
+_mongoc_linux_distro_scanner_read_generic_release_file (const char *path);
 
 BSON_END_DECLS
 
