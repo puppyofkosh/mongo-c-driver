@@ -23,17 +23,13 @@ static void
 _lsb_copy_val_if_need (const char  *val,
                        char       **buffer)
 {
-   size_t sz;
-
    if (*buffer) {
       /* We've encountered this key more than once. This means the file is
        * weird, so just keep first copy */
       return;
    }
 
-   sz = strlen (val) + 1;
-   *buffer = bson_malloc (sz);
-   bson_strncpy (*buffer, val, sz);
+   *buffer = bson_strdup (val);
 }
 
 static bool
