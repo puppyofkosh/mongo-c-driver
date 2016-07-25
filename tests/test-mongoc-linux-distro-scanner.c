@@ -58,10 +58,12 @@ test_release_file ()
 
    /* We expect to get the first line of the file (it's NOT parsing the file
     * because we're not sure what format it is */
+   ASSERT (name);
    ASSERT (strcmp (name, "NAME=\"Ubuntu\"") == 0);
 
    /* Normally would read from "/proc/sys/kernel/osrelease" */
    ver = _mongoc_linux_distro_scanner_read_osrelease (ver_path);
+   ASSERT (ver);
    ASSERT (strcmp (ver, "2.2.14-5.0") == 0);
 
    bson_free (name);

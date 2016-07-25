@@ -136,21 +136,23 @@ _mongoc_linux_distro_scanner_parse_lsb (const char  *path,
  * Read whole first line or first 256 bytes, whichever is smaller
  * It's your job to free the return value of this function
  */
-static char *
-_read_first_line_up_to_limit (const char *path)
+static bool
+_read_first_line_up_to_limit (const char *path,
+                              char       *buffer,
+                              size_t      bufsize)
 {
-   enum N { bufsize = 256 };
-   char buffer[bufsize];
-   char *ret = NULL;
+   bool ret = true;
    char *fgets_res;
    size_t len;
    FILE *f;
+
+   BSON_ASSERT (bufsize > 0);
 
    f = fopen (path, "r");
 
    if (!f) {
       MONGOC_WARNING ("Couldn't open %s: error %d", path, errno);
-      return NULL;
+      return false;
    }
 
    fgets_res = fgets (buffer, bufsize, f);
@@ -158,23 +160,21 @@ _read_first_line_up_to_limit (const char *path)
    if (fgets_res) {
       len = strlen (buffer);
 
-      if (buffer[len - 1] == '\n') {
+      if (len > 0 && buffer[len - 1] == '\n') {
          /* get rid of newline */
          buffer[len - 1] = '\0';
-         len--;
       }
-
-      ret = bson_malloc (len + 1);
-      bson_strncpy (ret, buffer, len + 1);
-   } else if (ferror (f)) {
-      MONGOC_WARNING ("Could open but not read from %s, error: %d",
-                      path ? path : "<unkown>", errno);
    } else {
-      /* The file is empty. Weird. Return null */
+      /* Didn't read anything. Just make sure the buffer is null terminated. */
+      buffer[0] = '\0';
+      if (ferror (f)) {
+         MONGOC_WARNING ("Could open but not read from %s, error: %d",
+                         path ? path : "<unkown>", errno);
+         ret = false;
+      }
    }
 
    fclose (f);
-
    return ret;
 }
 
@@ -203,19 +203,30 @@ _get_first_existing (const char **paths)
    return NULL;
 }
 
+static char *
+_read_64_bytes_or_first_line (const char *path)
+{
+   enum N { bufsize = 64 };
+   char *buffer;
+
+   buffer = bson_malloc (bufsize);
+
+   /* Read from something like /proc/sys/kernel/osrelease */
+   BSON_ASSERT (path);
+   _read_first_line_up_to_limit (path, buffer, bufsize);
+   return buffer;
+}
+
 char *
 _mongoc_linux_distro_scanner_read_osrelease (const char *path)
 {
-   /* Read from something like /proc/sys/kernel/osrelease */
-   BSON_ASSERT (path);
-   return _read_first_line_up_to_limit (path);
+   return _read_64_bytes_or_first_line (path);
 }
 
 char *
 _mongoc_linux_distro_scanner_read_release_file (const char *path)
 {
-   BSON_ASSERT (path);
-   return _read_first_line_up_to_limit (path);
+   return _read_64_bytes_or_first_line (path);
 }
 
 static char *
