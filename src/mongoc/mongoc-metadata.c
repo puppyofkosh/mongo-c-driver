@@ -37,6 +37,8 @@
  */
 static mongoc_metadata_t gMongocMetadata;
 
+
+#ifdef MONGOC_OS_IS_LINUX
 static char *
 _get_distro_name (void)
 {
@@ -44,6 +46,7 @@ _get_distro_name (void)
    /* This will likely have its own file at some point. */
    return bson_strndup ("Linux", METADATA_OS_NAME_MAX);
 }
+#endif
 
 static char *
 _get_os_type (void)
@@ -55,11 +58,13 @@ _get_os_type (void)
 }
 
 static char *
-_get_os_name_from_uname (void)
+_get_os_name (void)
 {
 #ifdef MONGOC_OS_NAME
    return bson_strndup (MONGOC_OS_NAME, METADATA_OS_NAME_MAX);
-#elif _POSIX_VERSION
+#elif defined (MONGOC_OS_IS_LINUX)
+   return _get_distro_name ();
+#elif defined (_POSIX_VERSION)
    struct utsname system_info;
 
    if (uname (&system_info) >= 0) {
@@ -68,28 +73,6 @@ _get_os_name_from_uname (void)
 #endif
 
    return NULL;
-}
-
-static char *
-_get_os_name (void)
-{
-   char *ret = NULL;
-
-#ifdef MONGOC_OS_NAME
-   ret = bson_strndup (MONGOC_OS_NAME, METADATA_OS_NAME_MAX);
-#endif
-
-   if (ret) {
-      return ret;
-   }
-
-#ifdef MONGOC_OS_TYPE
-   if (!strcmp ("Linux", MONGOC_OS_TYPE)) {
-      return _get_distro_name ();
-   }
-#endif
-
-   return _get_os_name_from_uname ();
 }
 
 static void

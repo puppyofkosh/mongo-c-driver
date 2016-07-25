@@ -52,6 +52,7 @@
 #elif defined (__unix__) || defined (__unix)
 #   include <sys/param.h>
 #   if defined (__linux__)
+#      define MONGOC_OS_IS_LINUX
 #      if defined (__ANDROID__)
 #         define MONGOC_OS_TYPE "Linux (Android)"
 #      else
