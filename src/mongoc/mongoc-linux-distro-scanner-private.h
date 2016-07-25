@@ -25,9 +25,9 @@ _mongoc_linux_distro_scanner_get_distro (char **name,
                                          char **version);
 
 bool
-_mongoc_linux_distro_scanner_parse_lsb (const char *path,
-                                        char      **name,
-                                        char      **version);
+_mongoc_linux_distro_scanner_parse_lsb (const char  *path,
+                                        char       **name,
+                                        char       **version);
 
 /* These are exposed privately so we can test them using example files. */
 char *
