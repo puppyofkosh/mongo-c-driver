@@ -28,6 +28,7 @@
 #include "mongoc-host-list.h"
 #include "mongoc-host-list-private.h"
 #include "mongoc-log.h"
+#include "mongoc-metadata-private.h"
 #include "mongoc-socket.h"
 #include "mongoc-uri-private.h"
 #include "mongoc-read-concern-private.h"
@@ -927,6 +928,7 @@ mongoc_uri_t *
 mongoc_uri_new (const char *uri_string)
 {
    mongoc_uri_t *uri;
+   const char *appname;
 #ifdef MONGOC_EXPERIMENTAL_FEATURES
    int32_t max_staleness_ms;
 #endif
@@ -967,6 +969,13 @@ mongoc_uri_new (const char *uri_string)
 
    if (!mongoc_write_concern_is_valid (uri->write_concern)) {
       mongoc_uri_destroy(uri);
+      return NULL;
+   }
+
+   appname = mongoc_uri_get_option_as_utf8 (uri, "appname", NULL);
+   if (appname && !_mongoc_metadata_appname_is_valid (appname)) {
+      MONGOC_WARNING ("appname is invalid [appname=%s]", appname);
+      mongoc_uri_destroy (uri);
       return NULL;
    }
 

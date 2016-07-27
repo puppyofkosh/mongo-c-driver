@@ -41,6 +41,38 @@ _reset_metadata (void)
 }
 
 static void
+test_mongoc_metadata_appname_in_uri (void)
+{
+   char long_string[MONGOC_METADATA_APPNAME_MAX + 2];
+   char *uri;
+   const char *appname;
+   mongoc_client_t *client;
+
+   memset (long_string, 'a', MONGOC_METADATA_APPNAME_MAX + 1);
+   long_string[MONGOC_METADATA_APPNAME_MAX + 1] = '\0';
+
+   /* Shouldn't be able to set with appname really long */
+   capture_logs (true);
+   uri = bson_strdup_printf ("mongodb://a/?appname=%s", long_string);
+   ASSERT (!mongoc_client_new (uri));
+   capture_logs (false);
+
+   /* Make sure we can set appname okay */
+   client = mongoc_client_new ("mongodb://host/?appname=mongodump");
+   appname = mongoc_uri_get_option_as_utf8 (mongoc_client_get_uri (client),
+                                            "appname", NULL);
+   ASSERT (appname);
+   ASSERT (!strcmp (appname, "mongodump"));
+
+   /* Shouldn't be able to set appname more than once, now that it's set */
+   ASSERT (!mongoc_client_set_appname (client, "test"));
+
+   mongoc_client_destroy (client);
+
+   bson_free (uri);
+}
+
+static void
 test_mongoc_metadata_append_success (void)
 {
    mock_server_t *server;
@@ -71,6 +103,7 @@ test_mongoc_metadata_append_success (void)
    mock_server_run (server);
    uri = mongoc_uri_copy (mock_server_get_uri (server));
    mongoc_uri_set_option_as_int32 (uri, "heartbeatFrequencyMS", 500);
+   mongoc_uri_set_option_as_utf8 (uri, "appname", "testapp");
    pool = mongoc_client_pool_new (uri);
 
    /* Force topology scanner to start */
@@ -85,6 +118,14 @@ test_mongoc_metadata_append_success (void)
 
    ASSERT (bson_iter_init_find (&iter, request_doc, METADATA_FIELD));
    ASSERT (bson_iter_recurse (&iter, &md_iter));
+
+   ASSERT (bson_iter_find (&md_iter, "application"));
+   ASSERT (BSON_ITER_HOLDS_DOCUMENT (&md_iter));
+   ASSERT (bson_iter_recurse (&md_iter, &inner_iter));
+   ASSERT (bson_iter_find (&inner_iter, "name"));
+   val = bson_iter_utf8 (&inner_iter, NULL);
+   ASSERT (val);
+   ASSERT (!strcmp (val, "testapp"));
 
    /* Make sure driver.name and driver.version and platform are all right */
    ASSERT (bson_iter_find (&md_iter, "driver"));
@@ -329,4 +370,6 @@ test_metadata_install (TestSuite *suite)
                   test_mongoc_metadata_too_big);
    TestSuite_Add (suite, "/ClientMetadata/cannot_send",
                   test_mongoc_metadata_cannot_send);
+   TestSuite_Add (suite, "/ClientMetadata/appname_in_uri",
+                  test_mongoc_metadata_appname_in_uri);
 }

@@ -24,6 +24,8 @@
 #undef MONGOC_LOG_DOMAIN
 #define MONGOC_LOG_DOMAIN "client-test"
 
+#define TEST_APPNAME "testapp"
+
 
 /*
  * test_client_cmd_write_concern:
@@ -1983,6 +1985,99 @@ test_client_sends_metadata_pooled (void)
 {
    _test_client_sends_metadata (true);
 }
+
+static void
+test_client_appname (bool pooled,
+                     bool use_uri)
+{
+   mock_server_t *server;
+   request_t *request;
+   const bson_t *request_doc;
+   bson_iter_t iter;
+   bson_iter_t md_iter;
+   bson_iter_t inner_iter;
+   const char *val;
+   mongoc_uri_t *uri;
+   future_t *future;
+   mongoc_client_t *client;
+   mongoc_client_pool_t *pool;
+   const char *const server_reply = "{'ok': 1, 'ismaster': true}";
+   const int heartbeat_ms = 500;
+   const char *appname = "testapp";
+
+   server = mock_server_new ();
+   mock_server_run (server);
+   uri = mongoc_uri_copy (mock_server_get_uri (server));
+   mongoc_uri_set_option_as_int32 (uri, "heartbeatFrequencyMS", heartbeat_ms);
+
+   if (use_uri) {
+      mongoc_uri_set_option_as_utf8 (uri, "appname", appname);
+   }
+
+   if (pooled) {
+      pool = mongoc_client_pool_new (uri);
+      if (!use_uri) {
+         mongoc_client_pool_set_appname (pool, appname);
+      }
+
+      /* Pop a client to trigger the topology scanner */
+      client = mongoc_client_pool_pop (pool);
+   } else {
+      client = mongoc_client_new_from_uri (uri);
+      if (!use_uri) {
+         mongoc_client_set_appname (pool, appname);
+      }
+      future = _force_ismaster_with_ping (client, heartbeat_ms);
+   }
+
+   request = mock_server_receives_ismaster (server);
+
+   /* Make sure the isMaster request has a "meta" field: */
+   request_doc = request_get_doc (request, 0);
+   ASSERT (request_doc);
+   ASSERT (bson_iter_init_find (&iter, request_doc, METADATA_FIELD));
+   ASSERT (bson_iter_recurse (&iter, &md_iter));
+   ASSERT (bson_iter_find (&md_iter, "application"));
+   ASSERT (BSON_ITER_HOLDS_DOCUMENT (&md_iter));
+   ASSERT (bson_iter_recurse (&md_iter, &inner_iter));
+   ASSERT (bson_iter_find (&inner_iter, "name"));
+   val = bson_iter_utf8 (&inner_iter, NULL);
+   ASSERT (val);
+   ASSERT (!strcmp (val, "testapp"));
+
+   mock_server_replies_simple (request, server_reply);
+   if (!pooled) {
+      _respond_to_ping (future, server);
+   }
+
+   request_destroy (request);
+
+   /* cleanup */
+   if (pooled) {
+      mongoc_client_pool_push (pool, client);
+      mongoc_client_pool_destroy (pool);
+   } else {
+      mongoc_client_destroy (client);
+   }
+
+   mongoc_uri_destroy (uri);
+   mock_server_destroy (server);
+}
+
+static void
+test_client_appname_single_uri (void)
+{
+   test_client_appname (false, true);
+}
+
+static void
+test_client_appname_single_nouri (void)
+{
+   test_client_appname (false, false);
+}
+
+/* TODO: FIXME: Add 2 more */
+
 #endif
 
 void
@@ -2040,6 +2135,8 @@ test_client_install (TestSuite *suite)
                   test_client_sends_metadata_single);
    TestSuite_Add (suite, "/Client/sends_metadata_pooled",
                   test_client_sends_metadata_pooled);
+   TestSuite_Add (suite, "/Client/appname_single_uri",
+                  test_client_appname_single_uri);
 #endif
 
 #ifdef TODO_CDRIVER_689

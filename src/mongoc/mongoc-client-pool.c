@@ -81,6 +81,7 @@ mongoc_client_pool_new (const mongoc_uri_t *uri)
 {
    mongoc_topology_t *topology;
    mongoc_client_pool_t *pool;
+   const char *appname;
    const bson_t *b;
    bson_iter_t iter;
 
@@ -120,6 +121,11 @@ mongoc_client_pool_new (const mongoc_uri_t *uri)
       if (BSON_ITER_HOLDS_INT32(&iter)) {
          pool->max_pool_size = BSON_MAX(1, bson_iter_int32(&iter));
       }
+   }
+
+   appname = mongoc_uri_get_option_as_utf8 (pool->uri, "appname", NULL);
+   if (appname) {
+      BSON_ASSERT (mongoc_client_pool_set_appname (pool, appname));
    }
 
    mongoc_counter_client_pools_active_inc();
