@@ -639,6 +639,11 @@ mongoc_uri_parse_option (mongoc_uri_t *uri,
          bson_free(value);
          return false;
       }
+   } else if (!strcasecmp (key, "appname")) {
+      if (!mongoc_uri_set_appname (uri, value)) {
+         MONGOC_WARNING ("appname is invalid [appname=%s]", value);
+         goto CLEANUP;
+      }
    } else {
       bson_append_utf8(&uri->options, key, -1, value, -1);
    }
@@ -928,7 +933,6 @@ mongoc_uri_t *
 mongoc_uri_new (const char *uri_string)
 {
    mongoc_uri_t *uri;
-   const char *appname;
 #ifdef MONGOC_EXPERIMENTAL_FEATURES
    int32_t max_staleness_ms;
 #endif
@@ -969,13 +973,6 @@ mongoc_uri_new (const char *uri_string)
 
    if (!mongoc_write_concern_is_valid (uri->write_concern)) {
       mongoc_uri_destroy(uri);
-      return NULL;
-   }
-
-   appname = mongoc_uri_get_option_as_utf8 (uri, "appname", NULL);
-   if (appname && !_mongoc_metadata_appname_is_valid (appname)) {
-      MONGOC_WARNING ("appname is invalid [appname=%s]", appname);
-      mongoc_uri_destroy (uri);
       return NULL;
    }
 
@@ -1119,6 +1116,38 @@ mongoc_uri_set_auth_source (mongoc_uri_t *uri, const char *value)
    }
 
    mongoc_uri_bson_append_or_replace_key (&uri->credentials, "authSource", value);
+
+   return true;
+}
+
+const char *
+mongoc_uri_get_appname (const mongoc_uri_t *uri)
+{
+   BSON_ASSERT (uri);
+
+   return mongoc_uri_get_option_as_utf8 (uri, "appname", NULL);
+}
+
+
+bool
+mongoc_uri_set_appname (mongoc_uri_t *uri,
+                        const char   *value)
+{
+   size_t len;
+
+   BSON_ASSERT (value);
+
+   len = strlen(value);
+
+   if (!bson_utf8_validate (value, len, false)) {
+      return false;
+   }
+
+   if (!_mongoc_metadata_appname_is_valid (value)) {
+      return false;
+   }
+
+   mongoc_uri_bson_append_or_replace_key (&uri->options, "appname", value);
 
    return true;
 }

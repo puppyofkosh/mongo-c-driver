@@ -44,32 +44,67 @@ static void
 test_mongoc_metadata_appname_in_uri (void)
 {
    char long_string[MONGOC_METADATA_APPNAME_MAX + 2];
-   char *uri;
-   const char *appname;
-   mongoc_client_t *client;
+   char *uri_str;
+   const char *good_uri = "mongodb://host/?appname=mongodump";
+   mongoc_uri_t *uri;
+   const char *appname = "mongodump";
 
    memset (long_string, 'a', MONGOC_METADATA_APPNAME_MAX + 1);
    long_string[MONGOC_METADATA_APPNAME_MAX + 1] = '\0';
 
    /* Shouldn't be able to set with appname really long */
    capture_logs (true);
-   uri = bson_strdup_printf ("mongodb://a/?appname=%s", long_string);
-   ASSERT (!mongoc_client_new (uri));
+   uri_str = bson_strdup_printf ("mongodb://a/?appname=%s", long_string);
+   ASSERT (!mongoc_client_new (uri_str));
    capture_logs (false);
 
-   /* Make sure we can set appname okay */
-   client = mongoc_client_new ("mongodb://host/?appname=mongodump");
-   appname = mongoc_uri_get_option_as_utf8 (mongoc_client_get_uri (client),
-                                            "appname", NULL);
+   uri = mongoc_uri_new (good_uri);
+   ASSERT (uri);
+   appname = mongoc_uri_get_appname (uri);
    ASSERT (appname);
-   ASSERT (!strcmp (appname, "mongodump"));
+   ASSERT (!strcmp (appname, appname));
+   mongoc_uri_destroy (uri);
 
-   /* Shouldn't be able to set appname more than once, now that it's set */
-   ASSERT (!mongoc_client_set_appname (client, "test"));
+   uri = mongoc_uri_new (NULL);
+   ASSERT (uri);
+   ASSERT (!mongoc_uri_set_appname (uri, long_string));
+   ASSERT (mongoc_uri_set_appname (uri, appname));
+   appname = mongoc_uri_get_appname (uri);
+   ASSERT (appname);
+   ASSERT (!strcmp (appname, appname));
+   mongoc_uri_destroy (uri);
+
+   bson_free (uri_str);
+}
+
+static void
+test_mongoc_metadata_appname_frozen_single (void)
+{
+   mongoc_client_t *client;
+   const char *good_uri = "mongodb://host/?appname=mongodump";
+
+   client = mongoc_client_new (good_uri);
+
+   /* Shouldn't be able to set appname again */
+   ASSERT (!mongoc_client_set_appname (client, "a"));
 
    mongoc_client_destroy (client);
+}
 
-   bson_free (uri);
+static void
+test_mongoc_metadata_appname_frozen_pooled (void)
+{
+   mongoc_client_pool_t *pool;
+   const char *good_uri = "mongodb://host/?appname=mongodump";
+   mongoc_uri_t *uri;
+
+   uri = mongoc_uri_new (good_uri);
+
+   pool = mongoc_client_pool_new (uri);
+   ASSERT (!mongoc_client_pool_set_appname (pool, "test"));
+
+   mongoc_client_pool_destroy (pool);
+   mongoc_uri_destroy (uri);
 }
 
 static void
@@ -362,6 +397,13 @@ test_mongoc_metadata_cannot_send (void)
 void
 test_metadata_install (TestSuite *suite)
 {
+   TestSuite_Add (suite, "/ClientMetadata/appname_in_uri",
+                  test_mongoc_metadata_appname_in_uri);
+   TestSuite_Add (suite, "/ClientMetadata/appname_frozen_single",
+                  test_mongoc_metadata_appname_frozen_single);
+   TestSuite_Add (suite, "/ClientMetadata/appname_frozen_pooled",
+                  test_mongoc_metadata_appname_frozen_pooled);
+
    TestSuite_Add (suite, "/ClientMetadata/success",
                   test_mongoc_metadata_append_success);
    TestSuite_Add (suite, "/ClientMetadata/failure",
@@ -370,6 +412,4 @@ test_metadata_install (TestSuite *suite)
                   test_mongoc_metadata_too_big);
    TestSuite_Add (suite, "/ClientMetadata/cannot_send",
                   test_mongoc_metadata_cannot_send);
-   TestSuite_Add (suite, "/ClientMetadata/appname_in_uri",
-                  test_mongoc_metadata_appname_in_uri);
 }
