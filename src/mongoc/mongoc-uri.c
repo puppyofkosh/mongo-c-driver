@@ -635,9 +635,7 @@ mongoc_uri_parse_option (mongoc_uri_t *uri,
       mongoc_read_concern_set_level (uri->read_concern, value);
    } else if (!strcasecmp(key, "authmechanismproperties")) {
       if (!mongoc_uri_parse_auth_mechanism_properties(uri, value)) {
-         bson_free(key);
-         bson_free(value);
-         return false;
+         goto CLEANUP;
       }
    }
 #ifdef MONGOC_EXPERIMENTAL_FEATURES
