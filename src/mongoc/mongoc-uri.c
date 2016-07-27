@@ -637,16 +637,14 @@ mongoc_uri_parse_option (mongoc_uri_t *uri,
       if (!mongoc_uri_parse_auth_mechanism_properties(uri, value)) {
          goto CLEANUP;
       }
-   }
 #ifdef MONGOC_EXPERIMENTAL_FEATURES
-   else if (!strcasecmp (key, "appname")) {
+   } else if (!strcasecmp (key, "appname")) {
       if (!mongoc_uri_set_appname (uri, value)) {
          MONGOC_WARNING ("appname is invalid [appname=%s]", value);
          goto CLEANUP;
       }
-   }
 #endif
-   else {
+   } else {
       bson_append_utf8(&uri->options, key, -1, value, -1);
    }
 
@@ -1137,13 +1135,9 @@ bool
 mongoc_uri_set_appname (mongoc_uri_t *uri,
                         const char   *value)
 {
-   size_t len;
-
    BSON_ASSERT (value);
 
-   len = strlen(value);
-
-   if (!bson_utf8_validate (value, len, false)) {
+   if (!bson_utf8_validate (value, strlen (value), false)) {
       return false;
    }
 
