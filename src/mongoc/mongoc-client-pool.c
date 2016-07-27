@@ -81,9 +81,12 @@ mongoc_client_pool_new (const mongoc_uri_t *uri)
 {
    mongoc_topology_t *topology;
    mongoc_client_pool_t *pool;
-   const char *appname;
    const bson_t *b;
    bson_iter_t iter;
+#ifdef MONGOC_EXPERIMENTAL_FEATURES
+   const char *appname;
+#endif
+
 
    ENTRY;
 
@@ -123,10 +126,13 @@ mongoc_client_pool_new (const mongoc_uri_t *uri)
       }
    }
 
+#ifdef MONGOC_EXPERIMENTAL_FEATURES
    appname = mongoc_uri_get_option_as_utf8 (pool->uri, "appname", NULL);
    if (appname) {
+      /* the appname should have already been validated */
       BSON_ASSERT (mongoc_client_pool_set_appname (pool, appname));
    }
+#endif
 
    mongoc_counter_client_pools_active_inc();
 
