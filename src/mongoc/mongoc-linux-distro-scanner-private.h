@@ -34,13 +34,6 @@ bool
 _mongoc_linux_distro_scanner_read_etc_os_release (const char  *path,
                                                   char       **name,
                                                   char       **version);
-
-char *
-_mongoc_linux_distro_scanner_read_proc_osrelease (const char *path);
-
-char *
-_mongoc_linux_distro_scanner_read_generic_release_file (const char *path);
-
 BSON_END_DECLS
 
 #endif

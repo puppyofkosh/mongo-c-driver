@@ -55,12 +55,12 @@ _process_line (const char  *name_key,
     * so we will just keep the first value encountered. */
    if (name_key_len == key_len &&
        strncmp (line, name_key, key_len) == 0 &&
-       ! (*name)) {
+       !(*name)) {
       *name = bson_strdup (val);
       return true;
    } else if (version_key_len == key_len &&
               strncmp (line, version_key, key_len) == 0 &&
-              ! (*version)) {
+              !(*version)) {
       *version = bson_strdup (val);
       return true;
    }
@@ -156,135 +156,11 @@ _mongoc_linux_distro_scanner_read_etc_os_release (const char  *path,
                               version);
 }
 
-/*
- * Read whole first line or first 256 bytes, whichever is smaller
- * It's your job to free the return value of this function
- */
-static bool
-_read_first_line_up_to_limit (const char *path,
-                              char       *buffer,
-                              size_t      bufsize)
-{
-   bool ret = true;
-   char *fgets_res;
-   size_t len;
-   FILE *f;
-
-   BSON_ASSERT (bufsize > 0);
-
-   f = fopen (path, "r");
-
-   if (!f) {
-      MONGOC_WARNING ("Couldn't open %s: error %d", path, errno);
-      return false;
-   }
-
-   fgets_res = fgets (buffer, bufsize, f);
-
-   if (fgets_res) {
-      len = strlen (buffer);
-
-      if (len > 0 && buffer[len - 1] == '\n') {
-         /* get rid of newline */
-         buffer[len - 1] = '\0';
-      }
-   } else {
-      /* Didn't read anything. Just make sure the buffer is null terminated. */
-      buffer[0] = '\0';
-      if (ferror (f)) {
-         MONGOC_WARNING ("Could open but not read from %s, error: %d",
-                         path ? path : "<unkown>", errno);
-         ret = false;
-      }
-   }
-
-   fclose (f);
-   return ret;
-}
-
-/*
- * Find the first string in a list which is a valid file.
- * Technically there's always a race condition when using this function
- * since immediately after it returns, the file could get removed, so
- * only use this for files which should never be removed (and check for
- * NULL when you fopen again)
- */
-static const char *
-_get_first_existing (const char **paths)
-{
-   const char **p = &paths[0];
-   FILE *f;
-
-   for (; *p != NULL; p++) {
-      f = fopen (*p, "r");
-
-      if (f) {
-         fclose (f);
-         return *p;
-      }
-   }
-
-   return NULL;
-}
-
-static char *
-_read_64_bytes_or_first_line (const char *path)
-{
-   enum N { bufsize = 64 };
-   char *buffer;
-
-   buffer = bson_malloc (bufsize);
-
-   /* Read from something like /proc/sys/kernel/osrelease */
-   BSON_ASSERT (path);
-   _read_first_line_up_to_limit (path, buffer, bufsize);
-   return buffer;
-}
-
-char *
-_mongoc_linux_distro_scanner_read_proc_osrelease (const char *path)
-{
-   return _read_64_bytes_or_first_line (path);
-}
-
-char *
-_mongoc_linux_distro_scanner_read_generic_release_file (const char *path)
-{
-   return _read_64_bytes_or_first_line (path);
-}
-
-static char *
-_read_generic_release_file ()
-{
-   const char *path;
-   const char *paths [] = {
-      "/etc/redhat-release",
-      "/etc/novell-release",
-      "/etc/gentoo-release",
-      "/etc/SuSE-release",
-      "/etc/SUSE-release",
-      "/etc/sles-release",
-      "/etc/debian_release",
-      "/etc/slackware-version",
-      "/etc/centos-release",
-      NULL,
-   };
-
-   path = _get_first_existing (paths);
-
-   if (!path) {
-      return NULL;
-   }
-
-   return _mongoc_linux_distro_scanner_read_generic_release_file (path);
-}
-
 bool
 _mongoc_linux_distro_scanner_get_distro (char **name,
                                          char **version)
 {
    const char *lsb_path = "/etc/lsb-release";
-   const char *osrelease_path = "/proc/sys/kernel/osrelease";
    const char *etc_os_release_path = "/etc/os-release";
 
    *name = NULL;
@@ -292,24 +168,19 @@ _mongoc_linux_distro_scanner_get_distro (char **name,
 
    _mongoc_linux_distro_scanner_read_etc_os_release (etc_os_release_path,
                                                      name, version);
+
    if (*name && *version) {
       return true;
    }
 
    _mongoc_linux_distro_scanner_read_lsb (lsb_path, name, version);
+
    if (*name && *version) {
       return true;
    }
 
-   /* Otherwise get the name from the "release" file and kernel version from
-    * /proc/sys/kernel/osrelease */
-   if (*name == NULL) {
-      *name = _read_generic_release_file ();
-   }
-
-   if (*version == NULL) {
-      *version = _mongoc_linux_distro_scanner_read_proc_osrelease (osrelease_path);
-   }
+   /* TODO: Otherwise get name from the "release" file like etc/fedora-release
+    * and kernel version from proc/sys/kernel/osrelease */
 
    return (*name != NULL) && (*version != NULL);
 }

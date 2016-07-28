@@ -67,37 +67,6 @@ test_read_etc_os_release ()
 
    bson_free (name);
    bson_free (version);
-
-}
-
-static void
-test_read_proc_osrelease ()
-{
-   char *ver;
-   const char *ver_path = OS_RELEASE_FILE_DIR "/example-proc-osrelease.txt";
-
-   /* Normally would read from "/proc/sys/kernel/osrelease" */
-   ver = _mongoc_linux_distro_scanner_read_proc_osrelease (ver_path);
-   ASSERT (ver);
-   ASSERT (strcmp (ver, "2.2.14-5.0") == 0);
-
-   bson_free (ver);
-}
-
-static void
-test_read_generic_release_file ()
-{
-   char *name;
-   const char *release_path = OS_RELEASE_FILE_DIR "/example-etc-fedora-release.txt";
-
-   name = _mongoc_linux_distro_scanner_read_generic_release_file (release_path);
-
-   /* We expect to get the first line of the file (it's NOT parsing the file
-    * because we're not sure what format it is */
-   ASSERT (name);
-   ASSERT (strcmp (name, "Fedora release 8 (Werewolf)") == 0);
-
-   bson_free (name);
 }
 
 /* We only expect this function to actually read anything on linux platforms.
@@ -137,10 +106,6 @@ test_linux_distro_scanner_install (TestSuite *suite)
                   test_read_lsb);
    TestSuite_Add (suite, "/LinuxDistroScanner/test_read_etc_os_release",
                   test_read_etc_os_release);
-   TestSuite_Add (suite, "/LinuxDistroScanner/test_read_proc_osrelease",
-                  test_read_proc_osrelease);
-   TestSuite_Add (suite, "/LinuxDistroScanner/read_generic_release_file",
-                  test_read_generic_release_file);
    TestSuite_Add (suite, "/LinuxDistroScanner/test_distro_scanner_reads",
                   test_distro_scanner_reads);
 }
