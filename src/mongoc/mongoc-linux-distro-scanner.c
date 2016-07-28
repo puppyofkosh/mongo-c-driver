@@ -134,8 +134,8 @@ _read_key_val_file (const char  *path,
 
 bool
 _mongoc_linux_distro_scanner_read_lsb (const char  *path,
-                                               char       **name,
-                                               char       **version)
+                                       char       **name,
+                                       char       **version)
 {
    return _read_key_val_file (path,
                               "DISTRIB_ID",
