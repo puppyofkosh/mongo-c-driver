@@ -34,6 +34,8 @@ _process_line (const char  *name_key,
 
    const char *delim = "=";
    const size_t delim_len = strlen (delim);
+   const size_t name_key_len = strlen (name_key);
+   const size_t version_key_len = strlen (version_key);
 
    /* Figure out where = is. Everything before is the key, and after is val */
    equal_sign = strstr (line, delim);
@@ -51,10 +53,14 @@ _process_line (const char  *name_key,
 
    /* If we find two copies of either key, the *name == NULL check will fail
     * so we will just keep the first value encountered. */
-   if (strncmp (line, name_key, key_len) == 0 && ! (*name)) {
+   if (name_key_len == key_len &&
+       strncmp (line, name_key, key_len) == 0 &&
+       ! (*name)) {
       *name = bson_strdup (val);
       return true;
-   } else if (strncmp (line, version_key, key_len) == 0 && ! (*version)) {
+   } else if (version_key_len == key_len &&
+              strncmp (line, version_key, key_len) == 0 &&
+              ! (*version)) {
       *version = bson_strdup (val);
       return true;
    }
@@ -295,10 +301,10 @@ _mongoc_linux_distro_scanner_get_distro (char **name,
       return true;
    }
 
-   /* Otherwise get the name from the "release" file and version from
+   /* Otherwise get the name from the "release" file and kernel version from
     * /proc/sys/kernel/osrelease */
    if (*name == NULL) {
-      *name = _find_and_read_release_file ();
+      *name = _read_generic_release_file ();
    }
 
    if (*version == NULL) {
