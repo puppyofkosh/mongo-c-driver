@@ -16,8 +16,10 @@
 
 #include "mongoc-error.h"
 #include "mongoc-log.h"
-#include "mongoc-version.h"
+#include "mongoc-trace.h"
 #include "mongoc-util-private.h"
+#include "mongoc-version.h"
+
 
 static bool
 _process_line (const char  *name_key,
@@ -37,12 +39,15 @@ _process_line (const char  *name_key,
    const size_t name_key_len = strlen (name_key);
    const size_t version_key_len = strlen (version_key);
 
+   ENTRY;
+
    /* Figure out where = is. Everything before is the key, and after is val */
    equal_sign = strstr (line, delim);
 
    if (equal_sign == NULL) {
+      TRACE ("Encountered malformed line: %s", line);
       /* This line is malformed/incomplete, so skip it */
-      return false;
+      RETURN (false);
    }
 
    /* Should never happen since we null terminated this line */
@@ -57,15 +62,15 @@ _process_line (const char  *name_key,
        strncmp (line, name_key, key_len) == 0 &&
        !(*name)) {
       *name = bson_strdup (val);
-      return true;
+      RETURN (true);
    } else if (version_key_len == key_len &&
               strncmp (line, version_key, key_len) == 0 &&
               !(*version)) {
       *version = bson_strdup (val);
-      return true;
+      RETURN (true);
    }
 
-   return false;
+   RETURN (false);
 }
 
 
@@ -93,10 +98,18 @@ _read_key_val_file (const char  *path,
    size_t cnt = 0;
    FILE *f;
 
+   ENTRY;
+
+   if (access (path, R_OK)) {
+      TRACE ("No permission to read from %s: errno: %d", path, errno);
+      RETURN (false);
+   }
+
    f = fopen (path, "r");
 
    if (!f) {
-      return false;
+      TRACE ("fopen failed: %d", errno);
+      RETURN (false);
    }
 
    /* Read first 4k bytes into buffer. Want to bound amount of time spent
@@ -129,7 +142,7 @@ _read_key_val_file (const char  *path,
    }
 
    fclose (f);
-   return *version && *name;
+   RETURN (*version && *name);
 }
 
 bool
