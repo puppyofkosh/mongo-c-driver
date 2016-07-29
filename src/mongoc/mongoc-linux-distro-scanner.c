@@ -90,12 +90,11 @@ _read_key_val_file (const char  *path,
 {
    enum N { bufsize = 4096 };
    char buffer [bufsize];
-   size_t buflen;
 
-   char *line;
-   char *line_end;
+   size_t max_read = bufsize;
+   size_t len;
+   char *fgets_res;
 
-   size_t cnt = 0;
    FILE *f;
 
    ENTRY;
@@ -112,28 +111,31 @@ _read_key_val_file (const char  *path,
       RETURN (false);
    }
 
-   /* Read first 4k bytes into buffer. Want to bound amount of time spent
+   /* Read at most 4k bytes total. Want to bound amount of time spent
     * reading this file. If the file is super long, we may read an incomplete
     * or unfinished line, but we're ok with that */
-   buflen = fread (buffer, sizeof (char), bufsize - 1, f);
-   buffer [buflen] = '\0';
+   while (max_read > 0) {
+      fgets_res = fgets (buffer, max_read, f);
 
-   while (cnt < buflen) {
-      line = buffer + cnt;
+      if (!fgets_res) {
+         /* We didn't read anything. */
+         if (ferror (f)) {
+            MONGOC_WARNING ("Could open but not read from %s, error: %d",
+                            path, errno);
+         }
 
-      /* Find end of this line */
-      line_end = strstr (buffer + cnt, "\n");
-
-      if (line_end) {
-         *line_end = '\0';
-      } else {
-         line_end = &buffer[buflen];
-         BSON_ASSERT (*line_end == '\0');
+         break;
       }
 
-      cnt += (line_end - line + 1);
+      len = strlen (buffer);
+      if (len > 0 && buffer[len - 1] == '\n') {
+         /* get rid of newline */
+         buffer[len - 1] = '\0';
+      }
 
-      _process_line (name_key, name, version_key, version, line);
+      max_read -= len;
+
+      _process_line (name_key, name, version_key, version, buffer);
 
       if (*version && *name) {
          /* No point in reading any more */
