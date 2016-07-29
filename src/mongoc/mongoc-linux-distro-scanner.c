@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <stdio.h>
+
 #include "mongoc-error.h"
 #include "mongoc-log.h"
 #include "mongoc-trace.h"
@@ -88,12 +90,14 @@ _read_key_val_file (const char  *path,
                     const char  *version_key,
                     char       **version)
 {
-   enum N { bufsize = 4096 };
-   char buffer [bufsize];
+   const int max_lines = 100;
+   int lines_read = 0;
 
-   size_t max_read = bufsize;
+   char *buffer = NULL;
+   size_t buffer_size;
+   ssize_t getline_ret;
+
    size_t len;
-   char *fgets_res;
 
    FILE *f;
 
@@ -111,37 +115,36 @@ _read_key_val_file (const char  *path,
       RETURN (false);
    }
 
-   /* Read at most 4k bytes total. Want to bound amount of time spent
-    * reading this file. If the file is super long, we may read an incomplete
-    * or unfinished line, but we're ok with that */
-   while (max_read > 0) {
-      fgets_res = fgets (buffer, max_read, f);
+   while (lines_read <= max_lines) {
+      getline_ret = getline (&buffer, &buffer_size, f);
+      if (getline_ret < 0) {
+         /* Error or eof. Just return. */
+         break;
+      }
 
-      if (!fgets_res) {
-         /* We didn't read anything. */
-         if (ferror (f)) {
-            MONGOC_WARNING ("Could open but not read from %s, error: %d",
-                            path, errno);
-         }
-
+      if (getline_ret == 0) {
+         /* Didn't read any characters. Leave */
          break;
       }
 
       len = strlen (buffer);
-      if (len > 0 && buffer[len - 1] == '\n') {
-         /* get rid of newline */
+      /* We checked getline_ret > 0 */
+      BSON_ASSERT (len > 0);
+      if (buffer[len - 1] == '\n') {
          buffer[len - 1] = '\0';
       }
 
-      max_read -= len;
-
       _process_line (name_key, name, version_key, version, buffer);
-
       if (*version && *name) {
          /* No point in reading any more */
          break;
       }
+
+      lines_read ++;
    }
+
+   /* Must use standard free () here since buffer was malloced in getline */
+   free (buffer);
 
    fclose (f);
    RETURN (*version && *name);
@@ -187,6 +190,11 @@ _mongoc_linux_distro_scanner_get_distro (char **name,
    if (*name && *version) {
       return true;
    }
+
+   bson_free (*name);
+   *name = NULL;
+   bson_free (*version);
+   *version = NULL;
 
    _mongoc_linux_distro_scanner_read_lsb (lsb_path, name, version);
 
