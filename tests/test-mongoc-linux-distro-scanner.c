@@ -24,47 +24,110 @@
 
 
 static void
-test_read_lsb ()
+test_read_key_value_file (void)
 {
    char *name = NULL;
    char *version = NULL;
    bool ret;
 
-   ret = _mongoc_linux_distro_scanner_read_lsb (
+   ret = _mongoc_linux_distro_scanner_read_key_val_file (
       OS_RELEASE_FILE_DIR "/example-lsb-file.txt",
-      &name, &version);
+      "DISTRIB_ID", &name,
+      "DISTRIB_RELEASE", &version);
 
    ASSERT (ret);
 
    ASSERT (name);
-   ASSERT (strcmp (name, "Ubuntu") == 0);
+   ASSERT_CMPSTR (name, "Ubuntu");
 
    ASSERT (version);
-   ASSERT (strcmp (version, "12.04") == 0);
+   ASSERT_CMPSTR (version, "12.04");
 
    bson_free (name);
    bson_free (version);
-}
 
-static void
-test_read_etc_os_release ()
-{
-   char *name = NULL;
-   char *version = NULL;
-   bool ret;
-
-   ret = _mongoc_linux_distro_scanner_read_etc_os_release (
+   ret = _mongoc_linux_distro_scanner_read_key_val_file (
       OS_RELEASE_FILE_DIR "/example-etc-os-release.txt",
-      &name, &version);
-
+      "ID", &name,
+      "VERSION_ID", &version);
    ASSERT (ret);
 
    ASSERT (name);
-   ASSERT (strcmp (name, "fedora") == 0);
+   ASSERT_CMPSTR (name, "fedora");
 
    ASSERT (version);
-   ASSERT (strcmp (version, "17") == 0);
+   ASSERT_CMPSTR (version, "17");
 
+   bson_free (name);
+   bson_free (version);
+
+   /* Now try some weird inputs */
+   ret = _mongoc_linux_distro_scanner_read_key_val_file (
+      OS_RELEASE_FILE_DIR "/example-etc-os-release.txt",
+      "ID=", &name,
+      "VERSION_ID=", &version);
+
+   ASSERT (name == NULL);
+   ASSERT (version == NULL);
+
+   ret = _mongoc_linux_distro_scanner_read_key_val_file (
+      OS_RELEASE_FILE_DIR "/example-etc-os-release.txt",
+      "", &name,
+      "", &version);
+
+   ASSERT (name == NULL);
+   ASSERT (version == NULL);
+
+
+   /* Test case where we get one but not the other */
+   ret = _mongoc_linux_distro_scanner_read_key_val_file (
+      OS_RELEASE_FILE_DIR "/example-etc-os-release.txt",
+      "ID", &name,
+      "VERSION_", &version);
+
+   ASSERT_CMPSTR (name, "fedora");
+   ASSERT (version == NULL);
+   bson_free (name);
+
+   /* Case where we say the key is the whole line */
+   ret = _mongoc_linux_distro_scanner_read_key_val_file (
+      OS_RELEASE_FILE_DIR "/example-etc-os-release.txt",
+      "ID", &name,
+      "VERSION_ID=17", &version);
+   ASSERT_CMPSTR (name, "fedora");
+   ASSERT (version == NULL);
+   bson_free (name);
+
+   /* Case where the key is duplicated, make sure we keep first version */
+   ret = _mongoc_linux_distro_scanner_read_key_val_file (
+      OS_RELEASE_FILE_DIR "/example-key-val-file.txt",
+      "key", &name,
+      "normalkey", &version);
+   ASSERT_CMPSTR (name, "first value");
+   ASSERT_CMPSTR (version, "normalval");
+   bson_free (name);
+   bson_free (version);
+
+   /* Case where the key is duplicated, make sure we keep first version */
+   ret = _mongoc_linux_distro_scanner_read_key_val_file (
+      OS_RELEASE_FILE_DIR "/example-key-val-file.txt",
+      "a-key-without-a-value", &name,
+      "normalkey", &version);
+   ASSERT_CMPSTR (name, "");
+   ASSERT_CMPSTR (version, "normalval");
+   bson_free (name);
+   bson_free (version);
+
+   /* Try to get value from a line like:
+    * just-a-key
+    * (No equals, no value)
+    */
+   ret = _mongoc_linux_distro_scanner_read_key_val_file (
+      OS_RELEASE_FILE_DIR "/example-key-val-file.txt",
+      "just-a-key", &name,
+      "normalkey", &version);
+   ASSERT (name == NULL);
+   ASSERT_CMPSTR (version, "normalval");
    bson_free (name);
    bson_free (version);
 }
@@ -73,7 +136,7 @@ test_read_etc_os_release ()
  * We run this test on all platforms to be sure the get_distro function doesn't
  * crash on a platform with some of the files it looks for missing */
 static void
-test_distro_scanner_reads ()
+test_distro_scanner_reads (void)
 {
    char *name;
    char *version;
@@ -102,10 +165,8 @@ test_distro_scanner_reads ()
 void
 test_linux_distro_scanner_install (TestSuite *suite)
 {
-   TestSuite_Add (suite, "/LinuxDistroScanner/parse_lsb",
-                  test_read_lsb);
-   TestSuite_Add (suite, "/LinuxDistroScanner/test_read_etc_os_release",
-                  test_read_etc_os_release);
+   TestSuite_Add (suite, "/LinuxDistroScanner/test_read_key_value_file",
+                  test_read_key_value_file);
    TestSuite_Add (suite, "/LinuxDistroScanner/test_distro_scanner_reads",
                   test_distro_scanner_reads);
 }

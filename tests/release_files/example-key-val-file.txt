@@ -1,0 +1,5 @@
+normalkey=normalval
+key=first value
+key=second value
+a-key-without-a-value=
+just-a-key

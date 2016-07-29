@@ -83,25 +83,28 @@ _process_line (const char  *name_key,
  * their values into *name and *version.
  * The values in *name and *version must be freed with bson_free.
  */
-static bool
-_read_key_val_file (const char  *path,
-                    const char  *name_key,
-                    char       **name,
-                    const char  *version_key,
-                    char       **version)
+bool
+_mongoc_linux_distro_scanner_read_key_val_file (const char  *path,
+                                                const char  *name_key,
+                                                char       **name,
+                                                const char  *version_key,
+                                                char       **version)
 {
    const int max_lines = 100;
    int lines_read = 0;
 
    char *buffer = NULL;
    size_t buffer_size;
-   ssize_t getline_ret;
+   ssize_t bytes_read;
 
    size_t len;
 
    FILE *f;
 
    ENTRY;
+
+   *name = NULL;
+   *version = NULL;
 
    if (access (path, R_OK)) {
       TRACE ("No permission to read from %s: errno: %d", path, errno);
@@ -116,19 +119,18 @@ _read_key_val_file (const char  *path,
    }
 
    while (lines_read <= max_lines) {
-      getline_ret = getline (&buffer, &buffer_size, f);
-      if (getline_ret < 0) {
-         /* Error or eof. Just return. */
+      bytes_read = getline (&buffer, &buffer_size, f);
+      if (bytes_read < 0) {
+         /* Error or eof. The docs for getline () don't seem to give
+          * us a way to distinguish, so just return. */
          break;
-      }
-
-      if (getline_ret == 0) {
-         /* Didn't read any characters. Leave */
+      } else if (bytes_read == 0) {
+         /* Didn't read any characters. Again, leave */
          break;
       }
 
       len = strlen (buffer);
-      /* We checked getline_ret > 0 */
+      /* We checked bytes_read > 0 */
       BSON_ASSERT (len > 0);
       if (buffer[len - 1] == '\n') {
          buffer[len - 1] = '\0';
@@ -151,59 +153,39 @@ _read_key_val_file (const char  *path,
 }
 
 bool
-_mongoc_linux_distro_scanner_read_lsb (const char  *path,
-                                       char       **name,
-                                       char       **version)
-{
-   return _read_key_val_file (path,
-                              "DISTRIB_ID",
-                              name,
-                              "DISTRIB_RELEASE",
-                              version);
-}
-
-bool
-_mongoc_linux_distro_scanner_read_etc_os_release (const char  *path,
-                                                  char       **name,
-                                                  char       **version)
-{
-   return _read_key_val_file (path,
-                              "ID",
-                              name,
-                              "VERSION_ID",
-                              version);
-}
-
-bool
 _mongoc_linux_distro_scanner_get_distro (char **name,
                                          char **version)
 {
-   const char *lsb_path = "/etc/lsb-release";
-   const char *etc_os_release_path = "/etc/os-release";
+   ENTRY;
 
    *name = NULL;
    *version = NULL;
 
-   _mongoc_linux_distro_scanner_read_etc_os_release (etc_os_release_path,
-                                                     name, version);
+   _mongoc_linux_distro_scanner_read_key_val_file ("/etc/os-release",
+                                                   "ID",
+                                                   name,
+                                                   "VERSION_ID",
+                                                   version);
 
    if (*name && *version) {
-      return true;
+      RETURN (true);
    }
 
    bson_free (*name);
-   *name = NULL;
    bson_free (*version);
-   *version = NULL;
 
-   _mongoc_linux_distro_scanner_read_lsb (lsb_path, name, version);
+   _mongoc_linux_distro_scanner_read_key_val_file ("/etc/lsb-release",
+                                                   "DISTRIB_ID",
+                                                   name,
+                                                   "DISTRIB_RELEASE",
+                                                   version);
 
    if (*name && *version) {
-      return true;
+      RETURN (true);
    }
 
    /* TODO: Otherwise get name from the "release" file like etc/fedora-release
-    * and kernel version from proc/sys/kernel/osrelease */
+    * and kernel version from uname */
 
-   return (*name != NULL) && (*version != NULL);
+   RETURN ((*name != NULL) && (*version != NULL));
 }
