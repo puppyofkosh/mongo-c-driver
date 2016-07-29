@@ -118,7 +118,7 @@ _mongoc_linux_distro_scanner_read_key_val_file (const char  *path,
       RETURN (false);
    }
 
-   while (lines_read <= max_lines) {
+   while (lines_read < max_lines) {
       bytes_read = getline (&buffer, &buffer_size, f);
       if (bytes_read < 0) {
          /* Error or eof. The docs for getline () don't seem to give

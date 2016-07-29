@@ -130,6 +130,16 @@ test_read_key_value_file (void)
    ASSERT_CMPSTR (version, "normalval");
    bson_free (name);
    bson_free (version);
+
+   /* Try to get a key which is on line 101 of the file
+    * (we stop reading at line 100) */
+   ret = _mongoc_linux_distro_scanner_read_key_val_file (
+      OS_RELEASE_FILE_DIR "/example-key-val-file.txt",
+      "lastkey", &name,
+      "normalkey", &version);
+   ASSERT (name == NULL);
+   ASSERT_CMPSTR (version, "normalval");
+   bson_free (version);
 }
 
 /* We only expect this function to actually read anything on linux platforms.
