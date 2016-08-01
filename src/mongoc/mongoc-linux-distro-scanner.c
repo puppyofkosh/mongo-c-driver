@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#ifdef MONGOC_OS_IS_LINUX
 #include <stdio.h>
 
 #include "mongoc-error.h"
@@ -187,5 +188,14 @@ _mongoc_linux_distro_scanner_get_distro (char **name,
    /* TODO: Otherwise get name from the "release" file like etc/fedora-release
     * and kernel version from uname */
 
+   if (*name || *version) {
+      RETURN (true);
+   }
+
+   bson_free (*name);
+   bson_free (*version);
+
    RETURN ((*name != NULL) && (*version != NULL));
 }
+
+#endif

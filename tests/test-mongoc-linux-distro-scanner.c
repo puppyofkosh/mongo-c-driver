@@ -22,7 +22,7 @@
 #include "test-libmongoc.h"
 #include "test-conveniences.h"
 
-
+#ifdef MONGOC_OS_IS_LINUX
 static void
 test_read_key_value_file (void)
 {
@@ -151,11 +151,6 @@ test_distro_scanner_reads (void)
    char *name;
    char *version;
 
-#ifndef __linux__
-   /* Want to ignore warnings that /proc/whatever doesn't exist.
-    * We still run the test since we want to be sure we don't crash! */
-   capture_logs (true);
-#endif
    _mongoc_linux_distro_scanner_get_distro (&name, &version);
 
    /*
@@ -164,19 +159,20 @@ test_distro_scanner_reads (void)
    fprintf (stderr, "name: %s version: %s\n", name, version);
    /* Remove it! */
 
-#ifdef __linux__
    ASSERT (name);
    ASSERT (strlen (name) > 0);
    ASSERT (version);
    ASSERT (strlen (version) > 0);
-#endif
 }
+#endif
 
 void
 test_linux_distro_scanner_install (TestSuite *suite)
 {
+#ifdef MONGOC_OS_IS_LINUX
    TestSuite_Add (suite, "/LinuxDistroScanner/test_read_key_value_file",
                   test_read_key_value_file);
    TestSuite_Add (suite, "/LinuxDistroScanner/test_distro_scanner_reads",
                   test_distro_scanner_reads);
+#endif
 }
