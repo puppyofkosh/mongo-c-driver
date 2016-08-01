@@ -24,7 +24,7 @@
 #include "mongoc-version.h"
 
 
-static bool
+static void
 _process_line (const char  *name_key,
                char       **name,
                const char  *version_key,
@@ -84,7 +84,7 @@ _process_line (const char  *name_key,
  * their values into *name and *version.
  * The values in *name and *version must be freed with bson_free.
  */
-bool
+void
 _mongoc_linux_distro_scanner_read_key_val_file (const char  *path,
                                                 const char  *name_key,
                                                 char       **name,
@@ -95,7 +95,7 @@ _mongoc_linux_distro_scanner_read_key_val_file (const char  *path,
    int lines_read = 0;
 
    char *buffer = NULL;
-   size_t buffer_size;
+   size_t buffer_size = 0;
    ssize_t bytes_read;
 
    size_t len;
@@ -109,24 +109,21 @@ _mongoc_linux_distro_scanner_read_key_val_file (const char  *path,
 
    if (access (path, R_OK)) {
       TRACE ("No permission to read from %s: errno: %d", path, errno);
-      RETURN (false);
+      EXIT;
    }
 
    f = fopen (path, "r");
 
    if (!f) {
       TRACE ("fopen failed: %d", errno);
-      RETURN (false);
+      EXIT;
    }
 
    while (lines_read < max_lines) {
       bytes_read = getline (&buffer, &buffer_size, f);
-      if (bytes_read < 0) {
+      if (bytes_read <= 0) {
          /* Error or eof. The docs for getline () don't seem to give
           * us a way to distinguish, so just return. */
-         break;
-      } else if (bytes_read == 0) {
-         /* Didn't read any characters. Again, leave */
          break;
       }
 
@@ -150,7 +147,7 @@ _mongoc_linux_distro_scanner_read_key_val_file (const char  *path,
    free (buffer);
 
    fclose (f);
-   RETURN (*version && *name);
+   EXIT;
 }
 
 bool
@@ -195,7 +192,7 @@ _mongoc_linux_distro_scanner_get_distro (char **name,
    bson_free (*name);
    bson_free (*version);
 
-   RETURN ((*name != NULL) && (*version != NULL));
+   RETURN (false);
 }
 
 #endif
