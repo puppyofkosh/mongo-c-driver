@@ -24,50 +24,6 @@
 
 
 static void
-test_read_generic_release_file (void)
-{
-   char *name;
-   char *version;
-   bool ret;
-   const char *paths [] = {
-      OS_RELEASE_FILE_DIR "/lol-im-not-here.txt",
-      OS_RELEASE_FILE_DIR "/also-not-here.txt",
-      OS_RELEASE_FILE_DIR "/example-etc-fedora-release.txt",
-      NULL,
-   };
-
-   const char *paths2 [] = {
-      OS_RELEASE_FILE_DIR "/example-etc-xyz-release-no-delimiter.txt",
-      NULL,
-   };
-
-   const char *paths3 [] = {
-      OS_RELEASE_FILE_DIR "/example-etc-weird-release.txt",
-      NULL,
-   };
-
-   ret = _read_generic_release_file (paths, &name, &version);
-   ASSERT (ret);
-   ASSERT_CMPSTR ("Fedora", name);
-   ASSERT_CMPSTR ("8 (Werewolf)", version);
-   bson_free (name);
-   bson_free (version);
-
-   ret = _read_generic_release_file (paths2, &name, &version);
-   ASSERT (ret);
-   ASSERT_CMPSTR ("This one just has name, not that R word", name);
-   ASSERT (version == NULL);
-   bson_free (name);
-
-   ret = _read_generic_release_file (paths3, &name, &version);
-   ASSERT (ret);
-   ASSERT_CMPSTR ("This one ends with", name);
-   ASSERT (version == NULL);
-   bson_free (name);
-}
-
-
-static void
 test_read_key_value_file (void)
 {
    char *name = NULL;
@@ -81,7 +37,10 @@ test_read_key_value_file (void)
 
    ASSERT (ret);
 
+   ASSERT (name);
    ASSERT_CMPSTR (name, "Ubuntu");
+
+   ASSERT (version);
    ASSERT_CMPSTR (version, "12.04");
 
    bson_free (name);
@@ -93,7 +52,10 @@ test_read_key_value_file (void)
       "VERSION_ID", &version);
    ASSERT (ret);
 
+   ASSERT (name);
    ASSERT_CMPSTR (name, "fedora");
+
+   ASSERT (version);
    ASSERT_CMPSTR (version, "17");
 
    bson_free (name);
@@ -213,8 +175,6 @@ test_distro_scanner_reads (void)
 void
 test_linux_distro_scanner_install (TestSuite *suite)
 {
-   TestSuite_Add (suite, "/LinuxDistroScanner/test_read_generic_release_file",
-                  test_read_generic_release_file);
    TestSuite_Add (suite, "/LinuxDistroScanner/test_read_key_value_file",
                   test_read_key_value_file);
    TestSuite_Add (suite, "/LinuxDistroScanner/test_distro_scanner_reads",

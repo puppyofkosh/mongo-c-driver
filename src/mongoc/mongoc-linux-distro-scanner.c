@@ -152,153 +152,10 @@ _mongoc_linux_distro_scanner_read_key_val_file (const char  *path,
    RETURN (*version && *name);
 }
 
-/*
- * Find the first string in a list which is a valid file. Assumes
- * passed in list is NULL terminated!
- *
- * Technically there's always a race condition when using this function
- * since immediately after it returns, the file could get removed, so
- * only use this for files which should never be removed (and check for
- * NULL when you fopen again)
- */
-const char *
-_get_first_existing (const char **paths)
-{
-   const char **p = &paths[0];
-
-   ENTRY;
-
-   for (; *p != NULL; p++) {
-      if (access (*p, F_OK)) {
-         /* Just doesn't exist */
-         continue;
-      }
-
-      if (access (*p, R_OK)) {
-         TRACE ("file %s exists, but cannot be read: error %d", *p, errno);
-         continue;
-      }
-   }
-
-   RETURN (NULL);
-}
-
-static void
-_split_by_release (const char *line,
-                   char       **name,
-                   char       **version)
-{
-   const char *delim_loc;
-   const char * const delim = " release ";
-   const char *version_string;
-
-   *name = NULL;
-   *version = NULL;
-
-   delim_loc = strstr (line, delim);
-   if (!delim_loc) {
-      *name = bson_strdup (line);
-      return;
-   }
-
-   *name = bson_strndup (line, delim_loc - line);
-
-   version_string = delim_loc + strlen (delim);
-   if (strlen (version_string) == 0) {
-      /* Weird. The file just ended with "release " */
-      return;
-   }
-
-   *version = bson_strdup (version_string);
-}
-
-/*
- * It seems like most release files follow the form
- * Version name release 1.2.3
- */
-bool
-_read_generic_release_file (const char **paths,
-                            char       **name,
-                            char       **version)
-{
-   const char *path;
-   enum N { bufsize = 4096 };
-   char buffer[bufsize];
-   char *fgets_res;
-   bool ret = false;
-   size_t len;
-   FILE *f;
-
-   ENTRY;
-
-   *name = NULL;
-   *version = NULL;
-
-   path = _get_first_existing (paths);
-
-   if (!path) {
-      RETURN (false);
-   }
-
-   f = fopen (path, "r");
-   if (!f) {
-      TRACE ("Found %s exists and readable but couldn't open: %d",
-             path, errno);
-      RETURN (false);
-   }
-
-   /* Read the first line of the file, look for the word "release" */
-   fgets_res = fgets (buffer, bufsize, f);
-   if (!fgets_res) {
-      /* Didn't read anything. Empty file or error. */
-      if (ferror (f)) {
-         TRACE ("Could open but not read from %s, error: %d",
-                path ? path : "<unkown>", errno);
-      }
-
-      GOTO (cleanup);
-   }
-
-   len = strlen (buffer);
-   if (len == 0) {
-      GOTO (cleanup);
-   }
-
-   if (buffer[len - 1] == '\n') {
-      /* get rid of newline */
-      buffer[len - 1] = '\0';
-   }
-
-   /* Try splitting the string. If we can't it'll store everything in
-    * *name. */
-   _split_by_release (buffer, name, version);
-   ret = true;
-
-cleanup:
-   fclose (f);
-   RETURN (ret);
-}
-
 bool
 _mongoc_linux_distro_scanner_get_distro (char **name,
                                          char **version)
 {
-   /* In case we decide to try looking up name/version again */
-   char *new_name;
-   char *new_version;
-   const char *generic_release_paths [] = {
-      "/etc/redhat-release",
-      "/etc/novell-release",
-      "/etc/gentoo-release",
-      "/etc/SuSE-release",
-      "/etc/SUSE-release",
-      "/etc/sles-release",
-      "/etc/debian_release",
-      "/etc/slackware-version",
-      "/etc/centos-release",
-      NULL,
-   };
-
    ENTRY;
 
    *name = NULL;
@@ -327,21 +184,8 @@ _mongoc_linux_distro_scanner_get_distro (char **name,
       RETURN (true);
    }
 
-
-   /* Try to read from a generic release file, but if it doesn't work out, just
-    * keep what we have*/
-   _read_generic_release_file (generic_release_paths, &new_name, &new_version);
-   if (new_name) {
-      bson_free (*name);
-      *name = new_name;
-   }
-
-   if (new_version) {
-      bson_free (*version);
-      *version = new_version;
-   }
-
-   /* TODO: If no version, use uname */
+   /* TODO: Otherwise get name from the "release" file like etc/fedora-release
+    * and kernel version from uname */
 
    RETURN ((*name != NULL) && (*version != NULL));
 }
