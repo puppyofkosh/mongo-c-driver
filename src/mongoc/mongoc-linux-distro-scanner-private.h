@@ -26,7 +26,7 @@ bool _mongoc_linux_distro_scanner_get_distro        (char **name,
                                                      char **version);
 
 /* These functions are exposed so we can test them separately. */
-bool _mongoc_linux_distro_scanner_read_key_val_file (const char  *path,
+void _mongoc_linux_distro_scanner_read_key_val_file (const char  *path,
                                                      const char  *name_key,
                                                      char       **name,
                                                      const char  *version_key,
