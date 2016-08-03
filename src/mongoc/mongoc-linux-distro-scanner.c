@@ -27,21 +27,19 @@
 #ifdef MONGOC_OS_IS_LINUX
 static void
 _process_line (const char  *name_key,
+               size_t       name_key_len,
                char       **name,
                const char  *version_key,
+               size_t       version_key_len,
                char       **version,
-               const char  *line)
+               const char  *line,
+               size_t       line_len)
 {
    size_t key_len;
    const char *equal_sign;
    const char *val;
 
-   const size_t line_len = strlen (line);
-
    const char *delim = "=";
-   const size_t delim_len = strlen (delim);
-   const size_t name_key_len = strlen (name_key);
-   const size_t version_key_len = strlen (version_key);
 
    ENTRY;
 
@@ -58,7 +56,7 @@ _process_line (const char  *name_key,
    BSON_ASSERT (equal_sign < line + line_len);
 
    key_len = equal_sign - line;
-   val = equal_sign + delim_len;
+   val = equal_sign + strlen (delim);
 
    /* If we find two copies of either key, the *name == NULL check will fail
     * so we will just keep the first value encountered. */
@@ -88,8 +86,10 @@ _process_line (const char  *name_key,
 void
 _mongoc_linux_distro_scanner_read_key_val_file (const char  *path,
                                                 const char  *name_key,
+                                                int          name_key_len,
                                                 char       **name,
                                                 const char  *version_key,
+                                                int          version_key_len,
                                                 char       **version)
 {
    const int max_lines = 100;
@@ -107,6 +107,14 @@ _mongoc_linux_distro_scanner_read_key_val_file (const char  *path,
 
    *name = NULL;
    *version = NULL;
+
+   if (name_key_len < 0) {
+      name_key_len = (int)strlen (name_key);
+   }
+
+   if (version_key_len < 0) {
+      version_key_len = (int)strlen (version_key);
+   }
 
    if (access (path, R_OK)) {
       TRACE ("No permission to read from %s: errno: %d", path, errno);
@@ -128,6 +136,8 @@ _mongoc_linux_distro_scanner_read_key_val_file (const char  *path,
          break;
       }
 
+      /* On some systems, getline may return a string that has '\0' embedded
+       * in it. We'll ignore everything after the first '\0' */
       len = strlen (buffer);
       /* We checked bytes_read > 0 */
       BSON_ASSERT (len > 0);
@@ -135,7 +145,9 @@ _mongoc_linux_distro_scanner_read_key_val_file (const char  *path,
          buffer[len - 1] = '\0';
       }
 
-      _process_line (name_key, name, version_key, version, buffer);
+      _process_line (name_key, name_key_len, name,
+                     version_key, version_key_len, version,
+                     buffer, len);
       if (*version && *name) {
          /* No point in reading any more */
          break;
@@ -309,9 +321,9 @@ _mongoc_linux_distro_scanner_get_distro (char **name,
    *version = NULL;
 
    _mongoc_linux_distro_scanner_read_key_val_file ("/etc/os-release",
-                                                   "ID",
+                                                   "ID", -1,
                                                    name,
-                                                   "VERSION_ID",
+                                                   "VERSION_ID", -1,
                                                    version);
 
    if (*name && *version) {
@@ -322,9 +334,9 @@ _mongoc_linux_distro_scanner_get_distro (char **name,
    bson_free (*version);
 
    _mongoc_linux_distro_scanner_read_key_val_file ("/etc/lsb-release",
-                                                   "DISTRIB_ID",
+                                                   "DISTRIB_ID", -1,
                                                    name,
-                                                   "DISTRIB_RELEASE",
+                                                   "DISTRIB_RELEASE", -1,
                                                    version);
 
    if (*name && *version) {
