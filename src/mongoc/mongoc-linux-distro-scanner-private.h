@@ -24,18 +24,21 @@
 
 BSON_BEGIN_DECLS
 
-bool         _mongoc_linux_distro_scanner_get_distro         (char **name,
-                                                              char **version);
+bool         _mongoc_linux_distro_scanner_get_distro                (char **name,
+                                                                     char **version);
 
 /* These functions are exposed so we can test them separately. */
-void         _mongoc_linux_distro_scanner_read_key_val_file  (const char  *path,
-                                                              const char  *name_key,
-                                                              char       **name,
-                                                              const char  *version_key,
-                                                              char       **version);
-void         _read_generic_release_file                      (const char **paths,
-                                                              char       **name,
-                                                              char       **version);
+void         _mongoc_linux_distro_scanner_read_key_val_file         (const char  *path,
+                                                                     const char  *name_key,
+                                                                     char       **name,
+                                                                     const char  *version_key,
+                                                                     char       **version);
+void         _mongoc_linux_distro_scanner_read_generic_release_file (const char **paths,
+                                                                     char       **name,
+                                                                     char       **version);
+void         _mongoc_linux_distro_scanner_split_line_by_release     (const char *line,
+                                                                     char       **name,
+                                                                     char       **version);
 BSON_END_DECLS
 
 #endif

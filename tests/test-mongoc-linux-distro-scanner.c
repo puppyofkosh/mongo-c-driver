@@ -41,16 +41,8 @@ test_read_generic_release_file (void)
       NULL,
    };
 
-   const char *paths3 [] = {
-      OS_RELEASE_FILE_DIR "/example-etc-weird-release.txt",
-      NULL,
-   };
-
-   const char *paths4 [] = {
-      OS_RELEASE_FILE_DIR "/example-etc-os-release-just-release.txt"
-   };
-
-   _read_generic_release_file (paths, &name, &version);
+   _mongoc_linux_distro_scanner_read_generic_release_file (paths, &name,
+                                                           &version);
    ASSERT (name);
    ASSERT (version);
    ASSERT_CMPSTR ("Fedora", name);
@@ -58,22 +50,22 @@ test_read_generic_release_file (void)
    bson_free (name);
    bson_free (version);
 
-   _read_generic_release_file (paths2, &name, &version);
+   _mongoc_linux_distro_scanner_read_generic_release_file (paths2, &name,
+                                                           &version);
    ASSERT (name);
    ASSERT_CMPSTR ("This one just has name, not that R word", name);
    ASSERT (version == NULL);
    bson_free (name);
 
-   _read_generic_release_file (paths3, &name, &version);
-   ASSERT (name);
-   ASSERT_CMPSTR ("This one ends with", name);
-   ASSERT (version == NULL);
-   bson_free (name);
-
-   _read_generic_release_file (paths4, &name, &version);
+   _mongoc_linux_distro_scanner_split_line_by_release (" release ",
+                                                       &name, &version);
    ASSERT (name == NULL);
    ASSERT (version == NULL);
-   bson_free (name);
+
+   _mongoc_linux_distro_scanner_split_line_by_release ("ends with release ",
+                                                       &name, &version);
+   ASSERT_CMPSTR ("ends with", name);
+   ASSERT (version == NULL);
 }
 
 

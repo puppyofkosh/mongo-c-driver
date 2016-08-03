@@ -184,10 +184,10 @@ _get_first_existing (const char **paths)
    RETURN (NULL);
 }
 
-static void
-_split_by_release (const char *line,
-                   char       **name,
-                   char       **version)
+void
+_mongoc_linux_distro_scanner_split_line_by_release (const char *line,
+                                                    char       **name,
+                                                    char       **version)
 {
    const char *delim_loc;
    const char * const delim = " release ";
@@ -200,9 +200,7 @@ _split_by_release (const char *line,
    if (!delim_loc) {
       *name = bson_strdup (line);
       return;
-   }
-
-   if (delim_loc == line) {
+   } else if (delim_loc == line) {
       /* The file starts with the word " release "
        * This file is weird enough we will just abandon it. */
       return;
@@ -224,9 +222,9 @@ _split_by_release (const char *line,
  * Version name release 1.2.3
  */
 void
-_read_generic_release_file (const char **paths,
-                            char       **name,
-                            char       **version)
+_mongoc_linux_distro_scanner_read_generic_release_file (const char **paths,
+                                                        char       **name,
+                                                        char       **version)
 {
    const char *path;
    enum N { bufsize = 4096 };
@@ -277,7 +275,7 @@ _read_generic_release_file (const char **paths,
 
    /* Try splitting the string. If we can't it'll store everything in
     * *name. */
-   _split_by_release (buffer, name, version);
+   _mongoc_linux_distro_scanner_split_line_by_release (buffer, name, version);
 
 cleanup:
    fclose (f);
@@ -336,7 +334,8 @@ _mongoc_linux_distro_scanner_get_distro (char **name,
 
    /* Try to read from a generic release file, but if it doesn't work out, just
     * keep what we have*/
-   _read_generic_release_file (generic_release_paths, &new_name, &new_version);
+   _mongoc_linux_distro_scanner_read_generic_release_file (
+      generic_release_paths, &new_name, &new_version);
    if (new_name) {
       bson_free (*name);
       *name = new_name;
