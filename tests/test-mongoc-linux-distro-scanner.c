@@ -17,12 +17,66 @@
 #include <mongoc.h>
 #include "mongoc-client-private.h"
 #include "mongoc-linux-distro-scanner-private.h"
+#include "mongoc-metadata-os-private.h"
 
 #include "TestSuite.h"
 #include "test-libmongoc.h"
 #include "test-conveniences.h"
 
 #ifdef MONGOC_OS_IS_LINUX
+static void
+test_read_generic_release_file (void)
+{
+   char *name;
+   char *version;
+   const char *paths [] = {
+      OS_RELEASE_FILE_DIR "/lol-im-not-here.txt",
+      OS_RELEASE_FILE_DIR "/also-not-here.txt",
+      OS_RELEASE_FILE_DIR "/example-etc-fedora-release.txt",
+      NULL,
+   };
+
+   const char *paths2 [] = {
+      OS_RELEASE_FILE_DIR "/example-etc-xyz-release-no-delimiter.txt",
+      NULL,
+   };
+
+   const char *paths3 [] = {
+      OS_RELEASE_FILE_DIR "/example-etc-weird-release.txt",
+      NULL,
+   };
+
+   const char *paths4 [] = {
+      OS_RELEASE_FILE_DIR "/example-etc-os-release-just-release.txt"
+   };
+
+   _read_generic_release_file (paths, &name, &version);
+   ASSERT (name);
+   ASSERT (version);
+   ASSERT_CMPSTR ("Fedora", name);
+   ASSERT_CMPSTR ("8 (Werewolf)", version);
+   bson_free (name);
+   bson_free (version);
+
+   _read_generic_release_file (paths2, &name, &version);
+   ASSERT (name);
+   ASSERT_CMPSTR ("This one just has name, not that R word", name);
+   ASSERT (version == NULL);
+   bson_free (name);
+
+   _read_generic_release_file (paths3, &name, &version);
+   ASSERT (name);
+   ASSERT_CMPSTR ("This one ends with", name);
+   ASSERT (version == NULL);
+   bson_free (name);
+
+   _read_generic_release_file (paths4, &name, &version);
+   ASSERT (name == NULL);
+   ASSERT (version == NULL);
+   bson_free (name);
+}
+
+
 static void
 test_read_key_value_file (void)
 {
@@ -34,12 +88,7 @@ test_read_key_value_file (void)
       "DISTRIB_ID", &name,
       "DISTRIB_RELEASE", &version);
 
-   ASSERT (ret);
-
-   ASSERT (name);
    ASSERT_CMPSTR (name, "Ubuntu");
-
-   ASSERT (version);
    ASSERT_CMPSTR (version, "12.04");
 
    bson_free (name);
@@ -49,12 +98,8 @@ test_read_key_value_file (void)
       OS_RELEASE_FILE_DIR "/example-etc-os-release.txt",
       "ID", &name,
       "VERSION_ID", &version);
-   ASSERT (ret);
 
-   ASSERT (name);
    ASSERT_CMPSTR (name, "fedora");
-
-   ASSERT (version);
    ASSERT_CMPSTR (version, "17");
 
    bson_free (name);
@@ -76,7 +121,6 @@ test_read_key_value_file (void)
 
    ASSERT (name == NULL);
    ASSERT (version == NULL);
-
 
    /* Test case where we get one but not the other */
    _mongoc_linux_distro_scanner_read_key_val_file (
@@ -158,10 +202,12 @@ test_distro_scanner_reads (void)
    fprintf (stderr, "name: %s version: %s\n", name, version);
    /* Remove it! */
 
+#ifdef __linux__
    ASSERT (name);
    ASSERT (strlen (name) > 0);
    ASSERT (version);
    ASSERT (strlen (version) > 0);
+#endif
 }
 #endif
 
@@ -169,6 +215,8 @@ void
 test_linux_distro_scanner_install (TestSuite *suite)
 {
 #ifdef MONGOC_OS_IS_LINUX
+   TestSuite_Add (suite, "/LinuxDistroScanner/test_read_generic_release_file",
+                  test_read_generic_release_file);
    TestSuite_Add (suite, "/LinuxDistroScanner/test_read_key_value_file",
                   test_read_key_value_file);
    TestSuite_Add (suite, "/LinuxDistroScanner/test_distro_scanner_reads",

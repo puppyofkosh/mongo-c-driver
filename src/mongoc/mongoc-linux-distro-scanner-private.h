@@ -18,19 +18,24 @@
 #ifndef MONGOC_LINUX_SCANNER_PRIVATE_H
 #define MONGOC_LINUX_SCANNER_PRIVATE_H
 
+#include "mongoc-metadata-os-private.h"
+
 #ifdef MONGOC_OS_IS_LINUX
 
 BSON_BEGIN_DECLS
 
-bool _mongoc_linux_distro_scanner_get_distro        (char **name,
-                                                     char **version);
+bool         _mongoc_linux_distro_scanner_get_distro         (char **name,
+                                                              char **version);
 
 /* These functions are exposed so we can test them separately. */
-void _mongoc_linux_distro_scanner_read_key_val_file (const char  *path,
-                                                     const char  *name_key,
-                                                     char       **name,
-                                                     const char  *version_key,
-                                                     char       **version);
+void         _mongoc_linux_distro_scanner_read_key_val_file  (const char  *path,
+                                                              const char  *name_key,
+                                                              char       **name,
+                                                              const char  *version_key,
+                                                              char       **version);
+void         _read_generic_release_file                      (const char **paths,
+                                                              char       **name,
+                                                              char       **version);
 BSON_END_DECLS
 
 #endif
