@@ -300,6 +300,32 @@ cleanup:
    EXIT;
 }
 
+/*
+ * Some boilerplate logic that tries to set *name and *version to new_name
+ * and new_version if it's not already set. Values of new_name and new_version
+ * should not be used after this call.
+ */
+static bool
+_overwrite_name_and_version (char **name,
+                             char **version,
+                             char *new_name,
+                             char *new_version)
+{
+   if (new_name && !(*name)) {
+      *name = new_name;
+   } else {
+      bson_free (new_name);
+   }
+
+   if (new_version && !(*version)) {
+      *version = new_version;
+   } else {
+      bson_free (new_version);
+   }
+
+   return (*name) && (*version);
+}
+
 bool
 _mongoc_linux_distro_scanner_get_distro (char **name,
                                          char **version)
@@ -335,32 +361,22 @@ _mongoc_linux_distro_scanner_get_distro (char **name,
       RETURN (true);
    }
 
-   bson_free (*name);
-   bson_free (*version);
-
    _mongoc_linux_distro_scanner_read_key_val_file ("/etc/lsb-release",
                                                    "DISTRIB_ID", -1,
-                                                   name,
+                                                   &new_name,
                                                    "DISTRIB_RELEASE", -1,
-                                                   version);
+                                                   &new_version);
 
-   if (*name && *version) {
+   if (_overwrite_name_and_version (name, version, new_name, new_version)) {
       RETURN (true);
    }
 
-
-   /* Try to read from a generic release file, but if it doesn't work out, just
-    * keep what we have */
+   /* Try to read from a generic release file */
    _mongoc_linux_distro_scanner_read_generic_release_file (
       generic_release_paths, &new_name, &new_version);
-   if (new_name && !(*name)) {
-      bson_free (*name);
-      *name = new_name;
-   }
 
-   if (new_version && !(*version)) {
-      bson_free (*version);
-      *version = new_version;
+   if (_overwrite_name_and_version (name, version, new_name, new_version)) {
+      RETURN (true);
    }
 
    /* TODO: If still no version, use uname */
