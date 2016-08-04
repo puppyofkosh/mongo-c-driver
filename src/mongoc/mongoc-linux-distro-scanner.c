@@ -57,6 +57,7 @@ _getline_wrapper (char   **buffer,
 
    if ((*buffer)[len - 1] == '\n') {
       (*buffer)[len - 1] = '\0';
+      len--;
    }
 
    return len;
@@ -123,10 +124,10 @@ _process_line (const char  *name_key,
 void
 _mongoc_linux_distro_scanner_read_key_val_file (const char  *path,
                                                 const char  *name_key,
-                                                int          name_key_len,
+                                                ssize_t      name_key_len,
                                                 char       **name,
                                                 const char  *version_key,
-                                                int          version_key_len,
+                                                ssize_t      version_key_len,
                                                 char       **version)
 {
    const int max_lines = 100;
@@ -134,7 +135,7 @@ _mongoc_linux_distro_scanner_read_key_val_file (const char  *path,
 
    char *buffer = NULL;
    size_t buffer_size = 0;
-   ssize_t bytes_read;
+   ssize_t buflen;
 
    FILE *f;
 
@@ -144,11 +145,11 @@ _mongoc_linux_distro_scanner_read_key_val_file (const char  *path,
    *version = NULL;
 
    if (name_key_len < 0) {
-      name_key_len = (int) strlen (name_key);
+      name_key_len = strlen (name_key);
    }
 
    if (version_key_len < 0) {
-      version_key_len = (int) strlen (version_key);
+      version_key_len = strlen (version_key);
    }
 
    if (access (path, R_OK)) {
@@ -164,16 +165,16 @@ _mongoc_linux_distro_scanner_read_key_val_file (const char  *path,
    }
 
    while (lines_read < max_lines) {
-      bytes_read = _getline_wrapper (&buffer, &buffer_size, f);
+      buflen = _getline_wrapper (&buffer, &buffer_size, f);
 
-      if (bytes_read <= 0) {
+      if (buflen <= 0) {
          /* Error or eof */
          break;
       }
 
       _process_line (name_key, name_key_len, name,
                      version_key, version_key_len, version,
-                     buffer, (size_t) bytes_read);
+                     buffer, (size_t) buflen);
 
       if (*version && *name) {
          /* No point in reading any more */
@@ -227,6 +228,7 @@ _get_first_existing (const char **paths)
  */
 void
 _mongoc_linux_distro_scanner_split_line_by_release (const char  *line,
+                                                    ssize_t      line_len,
                                                     char       **name,
                                                     char       **version)
 {
@@ -237,10 +239,16 @@ _mongoc_linux_distro_scanner_split_line_by_release (const char  *line,
    *name = NULL;
    *version = NULL;
 
+   if (line_len < 0) {
+      line_len = strlen (line);
+   }
+
    delim_loc = strstr (line, delim);
 
    if (!delim_loc) {
-      *name = bson_strdup (line);
+      if (line_len > 0) {
+         *name = bson_strdup (line);
+      }
       return;
    } else if (delim_loc == line) {
       /* The file starts with the word " release "
@@ -269,7 +277,7 @@ _mongoc_linux_distro_scanner_read_generic_release_file (const char **paths,
                                                         char       **version)
 {
    const char *path;
-   ssize_t bytes_read;
+   ssize_t buflen;
    char *buffer = NULL;
    size_t buffer_size = 0;
    FILE *f;
@@ -294,16 +302,17 @@ _mongoc_linux_distro_scanner_read_generic_release_file (const char **paths,
    }
 
    /* Read the first line of the file, look for the word "release" */
-   bytes_read = _getline_wrapper (&buffer, &buffer_size, f);
+   buflen = _getline_wrapper (&buffer, &buffer_size, f);
 
-   if (bytes_read <= 0) {
+   if (buflen <= 0) {
       /* Error or eof. */
       GOTO (cleanup);
    }
 
    /* Try splitting the string. If we can't it'll store everything in
     * *name. */
-   _mongoc_linux_distro_scanner_split_line_by_release (buffer, name, version);
+   _mongoc_linux_distro_scanner_split_line_by_release (buffer, buflen,
+                                                       name, version);
 
 cleanup:
    /* use regular free() on buffer since it's malloced by getline */
@@ -320,9 +329,9 @@ _get_kernel_version_from_uname (char **version)
 
    if (uname (&system_info) >= 0) {
       *version = bson_strdup_printf ("kernel %s", system_info.release);
+   } else {
+      *version = NULL;
    }
-
-   *version = NULL;
 }
 
 /*

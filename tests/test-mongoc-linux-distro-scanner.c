@@ -57,14 +57,20 @@ test_read_generic_release_file (void)
    ASSERT (version == NULL);
    bson_free (name);
 
-   _mongoc_linux_distro_scanner_split_line_by_release (" release ",
+   _mongoc_linux_distro_scanner_split_line_by_release (" release ", -1,
                                                        &name, &version);
    ASSERT (name == NULL);
    ASSERT (version == NULL);
 
-   _mongoc_linux_distro_scanner_split_line_by_release ("ends with release ",
+   _mongoc_linux_distro_scanner_split_line_by_release ("ends with release ", -1,
                                                        &name, &version);
    ASSERT_CMPSTR ("ends with", name);
+   ASSERT (version == NULL);
+   bson_free (name);
+
+   _mongoc_linux_distro_scanner_split_line_by_release ("", -1,
+                                                       &name, &version);
+   ASSERT (name == NULL);
    ASSERT (version == NULL);
 }
 
