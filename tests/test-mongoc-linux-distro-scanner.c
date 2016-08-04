@@ -198,12 +198,10 @@ test_distro_scanner_reads (void)
    ASSERT (name);
    ASSERT (strlen (name) > 0);
 
-   /* We don't assert version since some linux distros don't
-    * have a version (like arch). Instead, assert what we can,
-    * which is that the string should never be non null but empty. */
-   if (version) {
-      ASSERT (strlen (version) > 0);
-   }
+   /* Some linux distros don't have a version (like arch) but we should always
+    * return a version (at the very least, we'll return the kernel version) */
+   ASSERT (version);
+   ASSERT (strlen (version));
 #endif
 }
 #endif

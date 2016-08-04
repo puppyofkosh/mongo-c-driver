@@ -16,6 +16,9 @@
 
 
 #include <stdio.h>
+#ifdef _POSIX_VERSION
+#include <sys/utsname.h>
+#endif
 
 #include "mongoc-error.h"
 #include "mongoc-log.h"
@@ -32,12 +35,15 @@
  * 2) Remove '\n' at the end of the string, if there is one.
  */
 static ssize_t
-_getline_wrapper (char **buffer, size_t *buffer_size, FILE *f)
+_getline_wrapper (char   **buffer,
+                  size_t  *buffer_size,
+                  FILE    *f)
 {
    size_t len;
    ssize_t bytes_read;
 
    bytes_read = getline (buffer, buffer_size, f);
+
    if (bytes_read <= 0) {
       /* Error or eof. The docs for getline () don't seem to give
        * us a way to distinguish, so just return. */
@@ -49,9 +55,11 @@ _getline_wrapper (char **buffer, size_t *buffer_size, FILE *f)
    len = strlen (*buffer);
    /* We checked bytes_read > 0 */
    BSON_ASSERT (len > 0);
+
    if ((*buffer)[len - 1] == '\n') {
       (*buffer)[len - 1] = '\0';
    }
+
    return len;
 }
 
@@ -137,11 +145,11 @@ _mongoc_linux_distro_scanner_read_key_val_file (const char  *path,
    *version = NULL;
 
    if (name_key_len < 0) {
-      name_key_len = (int)strlen (name_key);
+      name_key_len = (int) strlen (name_key);
    }
 
    if (version_key_len < 0) {
-      version_key_len = (int)strlen (version_key);
+      version_key_len = (int) strlen (version_key);
    }
 
    if (access (path, R_OK)) {
@@ -158,6 +166,7 @@ _mongoc_linux_distro_scanner_read_key_val_file (const char  *path,
 
    while (lines_read < max_lines) {
       bytes_read = _getline_wrapper (&buffer, &buffer_size, f);
+
       if (bytes_read <= 0) {
          /* Error or eof */
          break;
@@ -165,13 +174,14 @@ _mongoc_linux_distro_scanner_read_key_val_file (const char  *path,
 
       _process_line (name_key, name_key_len, name,
                      version_key, version_key_len, version,
-                     buffer, (size_t)bytes_read);
+                     buffer, (size_t) bytes_read);
+
       if (*version && *name) {
          /* No point in reading any more */
          break;
       }
 
-      lines_read ++;
+      lines_read++;
    }
 
    /* Must use standard free () here since buffer was malloced in getline */
@@ -217,18 +227,19 @@ _get_first_existing (const char **paths)
  * *version = 14.04
  */
 void
-_mongoc_linux_distro_scanner_split_line_by_release (const char *line,
+_mongoc_linux_distro_scanner_split_line_by_release (const char  *line,
                                                     char       **name,
                                                     char       **version)
 {
    const char *delim_loc;
-   const char * const delim = " release ";
+   const char *const delim = " release ";
    const char *version_string;
 
    *name = NULL;
    *version = NULL;
 
    delim_loc = strstr (line, delim);
+
    if (!delim_loc) {
       *name = bson_strdup (line);
       return;
@@ -241,6 +252,7 @@ _mongoc_linux_distro_scanner_split_line_by_release (const char *line,
    *name = bson_strndup (line, delim_loc - line);
 
    version_string = delim_loc + strlen (delim);
+
    if (strlen (version_string) == 0) {
       /* Weird. The file just ended with "release " */
       return;
@@ -275,6 +287,7 @@ _mongoc_linux_distro_scanner_read_generic_release_file (const char **paths,
    }
 
    f = fopen (path, "r");
+
    if (!f) {
       TRACE ("Found %s exists and readable but couldn't open: %d",
              path, errno);
@@ -283,6 +296,7 @@ _mongoc_linux_distro_scanner_read_generic_release_file (const char **paths,
 
    /* Read the first line of the file, look for the word "release" */
    bytes_read = _getline_wrapper (&buffer, &buffer_size, f);
+
    if (bytes_read <= 0) {
       /* Error or eof. */
       GOTO (cleanup);
@@ -300,6 +314,18 @@ cleanup:
    EXIT;
 }
 
+static void
+_get_kernel_version_from_uname (char **version)
+{
+   struct utsname system_info;
+
+   if (uname (&system_info) >= 0) {
+      *version = bson_strdup_printf ("kernel %s", system_info.release);
+   }
+
+   *version = NULL;
+}
+
 /*
  * Some boilerplate logic that tries to set *name and *version to new_name
  * and new_version if it's not already set. Values of new_name and new_version
@@ -308,8 +334,8 @@ cleanup:
 static bool
 _overwrite_name_and_version (char **name,
                              char **version,
-                             char *new_name,
-                             char *new_version)
+                             char  *new_name,
+                             char  *new_version)
 {
    if (new_name && !(*name)) {
       *name = new_name;
@@ -379,7 +405,9 @@ _mongoc_linux_distro_scanner_get_distro (char **name,
       RETURN (true);
    }
 
-   /* TODO: If still no version, use uname */
+   if (*version == NULL) {
+      _get_kernel_version_from_uname (version);
+   }
 
    if (*name || *version) {
       RETURN (true);
