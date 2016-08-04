@@ -14,20 +14,19 @@
  * limitations under the License.
  */
 
+#include "mongoc-metadata-os-private.h"
+
+#ifdef MONGOC_OS_IS_LINUX
 
 #include <stdio.h>
-#ifdef _POSIX_VERSION
 #include <sys/utsname.h>
-#endif
 
 #include "mongoc-error.h"
 #include "mongoc-log.h"
-#include "mongoc-metadata-os-private.h"
 #include "mongoc-trace.h"
 #include "mongoc-util-private.h"
 #include "mongoc-version.h"
 
-#ifdef MONGOC_OS_IS_LINUX
 
 /* getline() wrapper which does 2 things:
  * 1) Returns a string that does not have \0s embedded in it (just truncates
@@ -409,7 +408,7 @@ _mongoc_linux_distro_scanner_get_distro (char **name,
       _get_kernel_version_from_uname (version);
    }
 
-   if (*name || *version) {
+   if (*name && *version) {
       RETURN (true);
    }
 
