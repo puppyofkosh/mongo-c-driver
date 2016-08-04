@@ -25,6 +25,36 @@
 #include "mongoc-version.h"
 
 #ifdef MONGOC_OS_IS_LINUX
+
+/* getline() wrapper which does 2 things:
+ * 1) Returns a string that does not have \0s embedded in it (just truncates
+ * everything past first null), so this function is not binary-safe!
+ * 2) Remove '\n' at the end of the string, if there is one.
+ */
+static ssize_t
+_getline_wrapper (char **buffer, size_t *buffer_size, FILE *f)
+{
+   size_t len;
+   ssize_t bytes_read;
+
+   bytes_read = getline (buffer, buffer_size, f);
+   if (bytes_read <= 0) {
+      /* Error or eof. The docs for getline () don't seem to give
+       * us a way to distinguish, so just return. */
+      return bytes_read;
+   }
+
+   /* On some systems, getline may return a string that has '\0' embedded
+    * in it. We'll ignore everything after the first '\0' */
+   len = strlen (*buffer);
+   /* We checked bytes_read > 0 */
+   BSON_ASSERT (len > 0);
+   if ((*buffer)[len - 1] == '\n') {
+      (*buffer)[len - 1] = '\0';
+   }
+   return len;
+}
+
 static void
 _process_line (const char  *name_key,
                size_t       name_key_len,
@@ -99,8 +129,6 @@ _mongoc_linux_distro_scanner_read_key_val_file (const char  *path,
    size_t buffer_size = 0;
    ssize_t bytes_read;
 
-   size_t len;
-
    FILE *f;
 
    ENTRY;
@@ -129,25 +157,15 @@ _mongoc_linux_distro_scanner_read_key_val_file (const char  *path,
    }
 
    while (lines_read < max_lines) {
-      bytes_read = getline (&buffer, &buffer_size, f);
+      bytes_read = _getline_wrapper (&buffer, &buffer_size, f);
       if (bytes_read <= 0) {
-         /* Error or eof. The docs for getline () don't seem to give
-          * us a way to distinguish, so just return. */
+         /* Error or eof */
          break;
-      }
-
-      /* On some systems, getline may return a string that has '\0' embedded
-       * in it. We'll ignore everything after the first '\0' */
-      len = strlen (buffer);
-      /* We checked bytes_read > 0 */
-      BSON_ASSERT (len > 0);
-      if (buffer[len - 1] == '\n') {
-         buffer[len - 1] = '\0';
       }
 
       _process_line (name_key, name_key_len, name,
                      version_key, version_key_len, version,
-                     buffer, len);
+                     buffer, (size_t)bytes_read);
       if (*version && *name) {
          /* No point in reading any more */
          break;
@@ -166,11 +184,6 @@ _mongoc_linux_distro_scanner_read_key_val_file (const char  *path,
 /*
  * Find the first string in a list which is a valid file. Assumes
  * passed in list is NULL terminated!
- *
- * Technically there's always a race condition when using this function
- * since immediately after it returns, the file could get removed, so
- * only use this for files which should never be removed (and check for
- * NULL when you fopen again)
  */
 const char *
 _get_first_existing (const char **paths)
@@ -196,6 +209,13 @@ _get_first_existing (const char **paths)
    RETURN (NULL);
 }
 
+
+/*
+ * Given a line of text, split it by the word "release." For example:
+ * Ubuntu release 14.04 =>
+ * *name = Ubuntu
+ * *version = 14.04
+ */
 void
 _mongoc_linux_distro_scanner_split_line_by_release (const char *line,
                                                     char       **name,
@@ -230,8 +250,7 @@ _mongoc_linux_distro_scanner_split_line_by_release (const char *line,
 }
 
 /*
- * It seems like most release files follow the form
- * Version name release 1.2.3
+ * Search for a *-release file, and read its contents.
  */
 void
 _mongoc_linux_distro_scanner_read_generic_release_file (const char **paths,
@@ -239,10 +258,9 @@ _mongoc_linux_distro_scanner_read_generic_release_file (const char **paths,
                                                         char       **version)
 {
    const char *path;
-   enum N { bufsize = 4096 };
-   char buffer[bufsize];
-   char *fgets_res;
-   size_t len;
+   ssize_t bytes_read;
+   char *buffer = NULL;
+   size_t buffer_size = 0;
    FILE *f;
 
    ENTRY;
@@ -264,25 +282,10 @@ _mongoc_linux_distro_scanner_read_generic_release_file (const char **paths,
    }
 
    /* Read the first line of the file, look for the word "release" */
-   fgets_res = fgets (buffer, bufsize, f);
-   if (!fgets_res) {
-      /* Didn't read anything. Empty file or error. */
-      if (ferror (f)) {
-         TRACE ("Could open but not read from %s, error: %d",
-                path ? path : "<unkown>", errno);
-      }
-
+   bytes_read = _getline_wrapper (&buffer, &buffer_size, f);
+   if (bytes_read <= 0) {
+      /* Error or eof. */
       GOTO (cleanup);
-   }
-
-   len = strlen (buffer);
-   if (len == 0) {
-      GOTO (cleanup);
-   }
-
-   if (buffer[len - 1] == '\n') {
-      /* get rid of newline */
-      buffer[len - 1] = '\0';
    }
 
    /* Try splitting the string. If we can't it'll store everything in
@@ -290,6 +293,8 @@ _mongoc_linux_distro_scanner_read_generic_release_file (const char **paths,
    _mongoc_linux_distro_scanner_split_line_by_release (buffer, name, version);
 
 cleanup:
+   /* use regular free() on buffer since it's malloced by getline */
+   free (buffer);
    fclose (f);
 
    EXIT;
@@ -345,20 +350,20 @@ _mongoc_linux_distro_scanner_get_distro (char **name,
 
 
    /* Try to read from a generic release file, but if it doesn't work out, just
-    * keep what we have*/
+    * keep what we have */
    _mongoc_linux_distro_scanner_read_generic_release_file (
       generic_release_paths, &new_name, &new_version);
-   if (new_name) {
+   if (new_name && !(*name)) {
       bson_free (*name);
       *name = new_name;
    }
 
-   if (new_version) {
+   if (new_version && !(*version)) {
       bson_free (*version);
       *version = new_version;
    }
 
-   /* TODO: If no version, use uname */
+   /* TODO: If still no version, use uname */
 
    if (*name || *version) {
       RETURN (true);
