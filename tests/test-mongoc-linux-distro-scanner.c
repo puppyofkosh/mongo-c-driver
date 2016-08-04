@@ -197,8 +197,13 @@ test_distro_scanner_reads (void)
 #ifdef __linux__
    ASSERT (name);
    ASSERT (strlen (name) > 0);
-   ASSERT (version);
-   ASSERT (strlen (version) > 0);
+
+   /* We don't assert version since some linux distros don't
+    * have a version (like arch). Instead, assert what we can,
+    * which is that the string should never be non null but empty. */
+   if (version) {
+      ASSERT (strlen (version) > 0);
+   }
 #endif
 }
 #endif
