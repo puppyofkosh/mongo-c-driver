@@ -43,7 +43,6 @@ _mongoc_linux_distro_scanner_read_generic_release_file (const char **paths,
                                                         char       **version);
 void
 _mongoc_linux_distro_scanner_split_line_by_release     (const char *line,
-                                                        ssize_t     line_len,
                                                         char       **name,
                                                         char       **version);
 BSON_END_DECLS

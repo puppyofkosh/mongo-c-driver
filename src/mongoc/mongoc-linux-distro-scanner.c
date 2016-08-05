@@ -221,10 +221,11 @@ _get_first_existing (const char **paths)
  * Ubuntu release 14.04 =>
  * *name = Ubuntu
  * *version = 14.04
+ * If the word "release" isn't found then we put the whole string into *name
+ * (even if the string is empty).
  */
 void
 _mongoc_linux_distro_scanner_split_line_by_release (const char  *line,
-                                                    ssize_t      line_len,
                                                     char       **name,
                                                     char       **version)
 {
@@ -235,16 +236,10 @@ _mongoc_linux_distro_scanner_split_line_by_release (const char  *line,
    *name = NULL;
    *version = NULL;
 
-   if (line_len < 0) {
-      line_len = strlen (line);
-   }
-
    needle_loc = strstr (line, needle);
 
    if (!needle_loc) {
-      if (line_len > 0) {
-         *name = bson_strdup (line);
-      }
+      *name = bson_strdup (line);
       return;
    } else if (needle_loc == line) {
       /* The file starts with the word " release "
@@ -303,7 +298,7 @@ _mongoc_linux_distro_scanner_read_generic_release_file (const char **paths,
    if (buflen > 0) {
       /* Try splitting the string. If we can't it'll store everything in
        * *name. */
-      _mongoc_linux_distro_scanner_split_line_by_release (buffer, buflen,
+      _mongoc_linux_distro_scanner_split_line_by_release (buffer,
                                                           name, version);
    }
 

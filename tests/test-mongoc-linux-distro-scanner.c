@@ -41,6 +41,11 @@ test_read_generic_release_file (void)
       NULL,
    };
 
+   const char *paths3 [] = {
+      OS_RELEASE_FILE_DIR "/empty-file.txt",
+      NULL,
+   };
+
    _mongoc_linux_distro_scanner_read_generic_release_file (paths, &name,
                                                            &version);
    ASSERT (name);
@@ -57,21 +62,27 @@ test_read_generic_release_file (void)
    ASSERT (version == NULL);
    bson_free (name);
 
-   _mongoc_linux_distro_scanner_split_line_by_release (" release ", -1,
+   _mongoc_linux_distro_scanner_read_generic_release_file (paths3, &name,
+                                                           &version);
+   ASSERT (name == NULL);
+   ASSERT (version == NULL);
+
+   _mongoc_linux_distro_scanner_split_line_by_release (" release ",
                                                        &name, &version);
    ASSERT (name == NULL);
    ASSERT (version == NULL);
 
-   _mongoc_linux_distro_scanner_split_line_by_release ("ends with release ", -1,
+   _mongoc_linux_distro_scanner_split_line_by_release ("ends with release ",
                                                        &name, &version);
    ASSERT_CMPSTR ("ends with", name);
    ASSERT (version == NULL);
    bson_free (name);
 
-   _mongoc_linux_distro_scanner_split_line_by_release ("", -1,
+   _mongoc_linux_distro_scanner_split_line_by_release ("",
                                                        &name, &version);
-   ASSERT (name == NULL);
+   ASSERT_CMPSTR (name, "");
    ASSERT (version == NULL);
+   bson_free (name);
 }
 
 
