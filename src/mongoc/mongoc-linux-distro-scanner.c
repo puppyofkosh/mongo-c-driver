@@ -22,6 +22,7 @@
 #include <sys/utsname.h>
 
 #include "mongoc-error.h"
+#include "mongoc-linux-distro-scanner-private.h"
 #include "mongoc-log.h"
 #include "mongoc-trace.h"
 #include "mongoc-util-private.h"
@@ -156,7 +157,7 @@ _mongoc_linux_distro_scanner_read_key_value_file (const char  *path,
    f = fopen (path, "r");
 
    if (!f) {
-      TRACE ("fopen failed: %d", errno);
+      TRACE ("fopen failed on %s: %d", path, errno);
       EXIT;
    }
 
