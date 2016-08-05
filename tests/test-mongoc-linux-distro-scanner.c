@@ -106,6 +106,16 @@ test_read_key_value_file (void)
    bson_free (version);
 
    _mongoc_linux_distro_scanner_read_key_value_file (
+      OS_RELEASE_FILE_DIR "/example-lsb-file-with-super-long-line.txt",
+      "DISTRIB_ID", -1, &name,
+      "DISTRIB_RELEASE", -1, &version);
+   ASSERT (!name);
+   ASSERT (version);
+   ASSERT_CMPSTR (version, "12.04");
+   bson_free (version);
+
+
+   _mongoc_linux_distro_scanner_read_key_value_file (
       OS_RELEASE_FILE_DIR "/example-etc-os-release.txt",
       "ID", -1, &name,
       "VERSION_ID", -1, &version);
