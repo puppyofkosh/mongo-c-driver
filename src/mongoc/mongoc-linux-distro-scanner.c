@@ -332,10 +332,10 @@ _get_kernel_version_from_uname (char **version)
  * should not be used after this call.
  */
 static bool
-_overwrite_name_and_version (char **name,
-                             char **version,
-                             char  *new_name,
-                             char  *new_version)
+_set_name_and_version_if_needed (char **name,
+                                 char **version,
+                                 char  *new_name,
+                                 char  *new_version)
 {
    if (new_name && !(*name)) {
       *name = new_name;
@@ -393,7 +393,7 @@ _mongoc_linux_distro_scanner_get_distro (char **name,
                                                      "DISTRIB_RELEASE", -1,
                                                      &new_version);
 
-   if (_overwrite_name_and_version (name, version, new_name, new_version)) {
+   if (_set_name_and_version_if_needed (name, version, new_name, new_version)) {
       RETURN (true);
    }
 
@@ -401,7 +401,7 @@ _mongoc_linux_distro_scanner_get_distro (char **name,
    _mongoc_linux_distro_scanner_read_generic_release_file (
       generic_release_paths, &new_name, &new_version);
 
-   if (_overwrite_name_and_version (name, version, new_name, new_version)) {
+   if (_set_name_and_version_if_needed (name, version, new_name, new_version)) {
       RETURN (true);
    }
 
