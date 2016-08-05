@@ -24,39 +24,50 @@
 #include "mongoc-error.h"
 #include "mongoc-linux-distro-scanner-private.h"
 #include "mongoc-log.h"
+#include "mongoc-metadata-private.h"
 #include "mongoc-trace.h"
 #include "mongoc-util-private.h"
 #include "mongoc-version.h"
 
+#define MAX_LINE_LENGTH 2048
 
-/* getline() wrapper which does 2 things:
- * 1) Returns a string that does not have \0s embedded in it (just truncates
- * everything past first null), so this function is not binary-safe!
- * 2) Remove '\n' at the end of the string, if there is one.
+/*
+ * fgets() wrapper which removes '\n' at the end of the string
+ * Return 0 on failure or EOF.
  */
 static size_t
-_getline_wrapper (char   **buffer,
-                  size_t  *buffer_size,
-                  FILE    *f)
+_fgets_wrapper (char   *buffer,
+                size_t  buffer_size,
+                FILE    *f)
 {
+   char *fgets_res;
    size_t len;
-   ssize_t bytes_read;
 
-   bytes_read = getline (buffer, buffer_size, f);
-
-   if (bytes_read <= 0) {
-      /* Error or eof. The docs for getline () don't seem to give
-       * us a way to distinguish, so just return. */
+   fgets_res = fgets (buffer, buffer_size, f);
+   if (!fgets_res) {
+      /* Didn't read anything. Empty file or error. */
+      if (ferror (f)) {
+         TRACE ("fgets() failed with error %d", errno);
+      }
       return 0;
    }
 
-   /* On some systems, getline may return a string that has '\0' embedded
-    * in it. We'll ignore everything after the first '\0' */
-   len = strlen (*buffer);
-
-   if (len > 0 && (*buffer)[len - 1] == '\n') {
-      (*buffer)[len - 1] = '\0';
+   /* Chop off trailing \n */
+   len = strlen (buffer);
+   if (len > 0 && buffer[len - 1] == '\n') {
+      buffer[len - 1] = '\0';
       len--;
+   } else if (len == buffer_size - 1) {
+      /* We read buffer_size bytes without hitting a newline
+       * therefore the line is super long, so we say this file is invalid.
+       * This is important since if we are in this situation, the NEXT call to
+       * fgets() will keep reading where we left off.
+       *
+       * This protects us from files like:
+       * aaaaa...DISTRIB_ID=nasal demons
+       */
+      TRACE ("Found line of length %ld, bailing out", len);
+      return 0;
    }
 
    return len;
@@ -132,7 +143,6 @@ _mongoc_linux_distro_scanner_read_key_value_file (const char  *path,
    const int max_lines = 100;
    int lines_read = 0;
    char *buffer = NULL;
-   size_t buffer_size = 0;
    size_t buflen;
    FILE *f;
 
@@ -161,8 +171,10 @@ _mongoc_linux_distro_scanner_read_key_value_file (const char  *path,
       EXIT;
    }
 
+   buffer = bson_malloc (MAX_LINE_LENGTH);
+
    while (lines_read < max_lines) {
-      buflen = _getline_wrapper (&buffer, &buffer_size, f);
+      buflen = _fgets_wrapper (buffer, MAX_LINE_LENGTH, f);
 
       if (buflen == 0) {
          /* Error or eof */
@@ -181,8 +193,7 @@ _mongoc_linux_distro_scanner_read_key_value_file (const char  *path,
       lines_read++;
    }
 
-   /* Must use standard free () here since buffer was malloced in getline */
-   free (buffer);
+   bson_free (buffer);
 
    fclose (f);
    EXIT;
@@ -271,7 +282,9 @@ _mongoc_linux_distro_scanner_read_generic_release_file (const char **paths,
    const char *path;
    size_t buflen;
    char *buffer = NULL;
-   size_t buffer_size = 0;
+   const size_t buffer_size = METADATA_OS_NAME_MAX +
+      METADATA_OS_VERSION_MAX +
+      10;
    FILE *f;
 
    ENTRY;
@@ -294,9 +307,11 @@ _mongoc_linux_distro_scanner_read_generic_release_file (const char **paths,
    }
 
    /* Read the first line of the file, look for the word "release" */
-   buflen = _getline_wrapper (&buffer, &buffer_size, f);
+   buffer = bson_malloc (buffer_size);
+   buflen = _fgets_wrapper (buffer, buffer_size, f);
 
    if (buflen > 0) {
+      TRACE ("Trying to split buffer with contents %s", buffer);
       /* Try splitting the string. If we can't it'll store everything in
        * *name. */
       _mongoc_linux_distro_scanner_split_line_by_release (buffer,
@@ -304,7 +319,7 @@ _mongoc_linux_distro_scanner_read_generic_release_file (const char **paths,
    }
 
    /* use regular free() on buffer since it's malloced by getline */
-   free (buffer);
+   bson_free (buffer);
    fclose (f);
 
    EXIT;

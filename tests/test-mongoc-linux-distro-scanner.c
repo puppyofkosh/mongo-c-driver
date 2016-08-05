@@ -97,7 +97,9 @@ test_read_key_value_file (void)
       "DISTRIB_ID", -1, &name,
       "DISTRIB_RELEASE", -1, &version);
 
+   ASSERT (name);
    ASSERT_CMPSTR (name, "Ubuntu");
+   ASSERT (version);
    ASSERT_CMPSTR (version, "12.04");
 
    bson_free (name);
