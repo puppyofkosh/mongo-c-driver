@@ -33,7 +33,7 @@
  * everything past first null), so this function is not binary-safe!
  * 2) Remove '\n' at the end of the string, if there is one.
  */
-static ssize_t
+static size_t
 _getline_wrapper (char   **buffer,
                   size_t  *buffer_size,
                   FILE    *f)
@@ -46,16 +46,14 @@ _getline_wrapper (char   **buffer,
    if (bytes_read <= 0) {
       /* Error or eof. The docs for getline () don't seem to give
        * us a way to distinguish, so just return. */
-      return bytes_read;
+      return 0;
    }
 
    /* On some systems, getline may return a string that has '\0' embedded
     * in it. We'll ignore everything after the first '\0' */
    len = strlen (*buffer);
-   /* We checked bytes_read > 0 */
-   BSON_ASSERT (len > 0);
 
-   if ((*buffer)[len - 1] == '\n') {
+   if (len > 0 && (*buffer)[len - 1] == '\n') {
       (*buffer)[len - 1] = '\0';
       len--;
    }
@@ -75,14 +73,14 @@ _process_line (const char  *name_key,
 {
    size_t key_len;
    const char *equal_sign;
-   const char *val;
-
-   const char *delim = "=";
+   const char *value;
+   const char *needle = "=";
 
    ENTRY;
 
-   /* Figure out where = is. Everything before is the key, and after is val */
-   equal_sign = strstr (line, delim);
+   /* Figure out where = is. Everything before is the key,
+    * and everything after is the value */
+   equal_sign = strstr (line, needle);
 
    if (equal_sign == NULL) {
       TRACE ("Encountered malformed line: %s", line);
@@ -94,20 +92,20 @@ _process_line (const char  *name_key,
    BSON_ASSERT (equal_sign < line + line_len);
 
    key_len = equal_sign - line;
-   val = equal_sign + strlen (delim);
+   value = equal_sign + strlen (needle);
 
    /* If we find two copies of either key, the *name == NULL check will fail
     * so we will just keep the first value encountered. */
    if (name_key_len == key_len &&
        strncmp (line, name_key, key_len) == 0 &&
        !(*name)) {
-      *name = bson_strdup (val);
-      EXIT;
+      *name = bson_strdup (value);
+      TRACE ("Found name: %s", *name);
    } else if (version_key_len == key_len &&
               strncmp (line, version_key, key_len) == 0 &&
               !(*version)) {
-      *version = bson_strdup (val);
-      EXIT;
+      *version = bson_strdup (value);
+      TRACE ("Found version: %s", *version);
    }
 
    EXIT;
@@ -122,21 +120,19 @@ _process_line (const char  *name_key,
  * The values in *name and *version must be freed with bson_free.
  */
 void
-_mongoc_linux_distro_scanner_read_key_val_file (const char  *path,
-                                                const char  *name_key,
-                                                ssize_t      name_key_len,
-                                                char       **name,
-                                                const char  *version_key,
-                                                ssize_t      version_key_len,
-                                                char       **version)
+_mongoc_linux_distro_scanner_read_key_value_file (const char  *path,
+                                                  const char  *name_key,
+                                                  ssize_t      name_key_len,
+                                                  char       **name,
+                                                  const char  *version_key,
+                                                  ssize_t      version_key_len,
+                                                  char       **version)
 {
    const int max_lines = 100;
    int lines_read = 0;
-
    char *buffer = NULL;
    size_t buffer_size = 0;
-   ssize_t buflen;
-
+   size_t buflen;
    FILE *f;
 
    ENTRY;
@@ -167,14 +163,14 @@ _mongoc_linux_distro_scanner_read_key_val_file (const char  *path,
    while (lines_read < max_lines) {
       buflen = _getline_wrapper (&buffer, &buffer_size, f);
 
-      if (buflen <= 0) {
+      if (buflen == 0) {
          /* Error or eof */
          break;
       }
 
       _process_line (name_key, name_key_len, name,
                      version_key, version_key_len, version,
-                     buffer, (size_t) buflen);
+                     buffer, buflen);
 
       if (*version && *name) {
          /* No point in reading any more */
@@ -232,8 +228,8 @@ _mongoc_linux_distro_scanner_split_line_by_release (const char  *line,
                                                     char       **name,
                                                     char       **version)
 {
-   const char *delim_loc;
-   const char *const delim = " release ";
+   const char *needle_loc;
+   const char *const needle = " release ";
    const char *version_string;
 
    *name = NULL;
@@ -243,22 +239,22 @@ _mongoc_linux_distro_scanner_split_line_by_release (const char  *line,
       line_len = strlen (line);
    }
 
-   delim_loc = strstr (line, delim);
+   needle_loc = strstr (line, needle);
 
-   if (!delim_loc) {
+   if (!needle_loc) {
       if (line_len > 0) {
          *name = bson_strdup (line);
       }
       return;
-   } else if (delim_loc == line) {
+   } else if (needle_loc == line) {
       /* The file starts with the word " release "
        * This file is weird enough we will just abandon it. */
       return;
    }
 
-   *name = bson_strndup (line, delim_loc - line);
+   *name = bson_strndup (line, needle_loc - line);
 
-   version_string = delim_loc + strlen (delim);
+   version_string = needle_loc + strlen (needle);
 
    if (strlen (version_string) == 0) {
       /* Weird. The file just ended with "release " */
@@ -277,7 +273,7 @@ _mongoc_linux_distro_scanner_read_generic_release_file (const char **paths,
                                                         char       **version)
 {
    const char *path;
-   ssize_t buflen;
+   size_t buflen;
    char *buffer = NULL;
    size_t buffer_size = 0;
    FILE *f;
@@ -304,17 +300,13 @@ _mongoc_linux_distro_scanner_read_generic_release_file (const char **paths,
    /* Read the first line of the file, look for the word "release" */
    buflen = _getline_wrapper (&buffer, &buffer_size, f);
 
-   if (buflen <= 0) {
-      /* Error or eof. */
-      GOTO (cleanup);
+   if (buflen > 0) {
+      /* Try splitting the string. If we can't it'll store everything in
+       * *name. */
+      _mongoc_linux_distro_scanner_split_line_by_release (buffer, buflen,
+                                                          name, version);
    }
 
-   /* Try splitting the string. If we can't it'll store everything in
-    * *name. */
-   _mongoc_linux_distro_scanner_split_line_by_release (buffer, buflen,
-                                                       name, version);
-
-cleanup:
    /* use regular free() on buffer since it's malloced by getline */
    free (buffer);
    fclose (f);
@@ -385,21 +377,21 @@ _mongoc_linux_distro_scanner_get_distro (char **name,
    *name = NULL;
    *version = NULL;
 
-   _mongoc_linux_distro_scanner_read_key_val_file ("/etc/os-release",
-                                                   "ID", -1,
-                                                   name,
-                                                   "VERSION_ID", -1,
-                                                   version);
+   _mongoc_linux_distro_scanner_read_key_value_file ("/etc/os-release",
+                                                     "ID", -1,
+                                                     name,
+                                                     "VERSION_ID", -1,
+                                                     version);
 
    if (*name && *version) {
       RETURN (true);
    }
 
-   _mongoc_linux_distro_scanner_read_key_val_file ("/etc/lsb-release",
-                                                   "DISTRIB_ID", -1,
-                                                   &new_name,
-                                                   "DISTRIB_RELEASE", -1,
-                                                   &new_version);
+   _mongoc_linux_distro_scanner_read_key_value_file ("/etc/lsb-release",
+                                                     "DISTRIB_ID", -1,
+                                                     &new_name,
+                                                     "DISTRIB_RELEASE", -1,
+                                                     &new_version);
 
    if (_overwrite_name_and_version (name, version, new_name, new_version)) {
       RETURN (true);

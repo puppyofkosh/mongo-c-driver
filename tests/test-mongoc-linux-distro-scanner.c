@@ -81,7 +81,7 @@ test_read_key_value_file (void)
    char *name = NULL;
    char *version = NULL;
 
-   _mongoc_linux_distro_scanner_read_key_val_file (
+   _mongoc_linux_distro_scanner_read_key_value_file (
       OS_RELEASE_FILE_DIR "/example-lsb-file.txt",
       "DISTRIB_ID", -1, &name,
       "DISTRIB_RELEASE", -1, &version);
@@ -92,7 +92,7 @@ test_read_key_value_file (void)
    bson_free (name);
    bson_free (version);
 
-   _mongoc_linux_distro_scanner_read_key_val_file (
+   _mongoc_linux_distro_scanner_read_key_value_file (
       OS_RELEASE_FILE_DIR "/example-etc-os-release.txt",
       "ID", -1, &name,
       "VERSION_ID", -1, &version);
@@ -104,7 +104,7 @@ test_read_key_value_file (void)
    bson_free (version);
 
    /* Now try some weird inputs */
-   _mongoc_linux_distro_scanner_read_key_val_file (
+   _mongoc_linux_distro_scanner_read_key_value_file (
       OS_RELEASE_FILE_DIR "/example-etc-os-release.txt",
       "ID=", -1, &name,
       "VERSION_ID=", -1, &version);
@@ -112,7 +112,7 @@ test_read_key_value_file (void)
    ASSERT (name == NULL);
    ASSERT (version == NULL);
 
-   _mongoc_linux_distro_scanner_read_key_val_file (
+   _mongoc_linux_distro_scanner_read_key_value_file (
       OS_RELEASE_FILE_DIR "/example-etc-os-release.txt",
       "", -1, &name,
       "", -1, &version);
@@ -121,7 +121,7 @@ test_read_key_value_file (void)
    ASSERT (version == NULL);
 
    /* Test case where we get one but not the other */
-   _mongoc_linux_distro_scanner_read_key_val_file (
+   _mongoc_linux_distro_scanner_read_key_value_file (
       OS_RELEASE_FILE_DIR "/example-etc-os-release.txt",
       "ID", -1, &name,
       "VERSION_", -1, &version);
@@ -131,7 +131,7 @@ test_read_key_value_file (void)
    bson_free (name);
 
    /* Case where we say the key is the whole line */
-   _mongoc_linux_distro_scanner_read_key_val_file (
+   _mongoc_linux_distro_scanner_read_key_value_file (
       OS_RELEASE_FILE_DIR "/example-etc-os-release.txt",
       "ID", -1, &name,
       "VERSION_ID=17", -1, &version);
@@ -140,8 +140,8 @@ test_read_key_value_file (void)
    bson_free (name);
 
    /* Case where the key is duplicated, make sure we keep first version */
-   _mongoc_linux_distro_scanner_read_key_val_file (
-      OS_RELEASE_FILE_DIR "/example-key-val-file.txt",
+   _mongoc_linux_distro_scanner_read_key_value_file (
+      OS_RELEASE_FILE_DIR "/example-key-value-file.txt",
       "key", -1, &name,
       "normalkey", -1, &version);
    ASSERT_CMPSTR (name, "first value");
@@ -150,8 +150,8 @@ test_read_key_value_file (void)
    bson_free (version);
 
    /* Case where the key is duplicated, make sure we keep first version */
-   _mongoc_linux_distro_scanner_read_key_val_file (
-      OS_RELEASE_FILE_DIR "/example-key-val-file.txt",
+   _mongoc_linux_distro_scanner_read_key_value_file (
+      OS_RELEASE_FILE_DIR "/example-key-value-file.txt",
       "a-key-without-a-value", -1, &name,
       "normalkey", -1, &version);
    ASSERT_CMPSTR (name, "");
@@ -163,8 +163,8 @@ test_read_key_value_file (void)
     * just-a-key
     * (No equals, no value)
     */
-   _mongoc_linux_distro_scanner_read_key_val_file (
-      OS_RELEASE_FILE_DIR "/example-key-val-file.txt",
+   _mongoc_linux_distro_scanner_read_key_value_file (
+      OS_RELEASE_FILE_DIR "/example-key-value-file.txt",
       "just-a-key", -1, &name,
       "normalkey", -1, &version);
    ASSERT (name == NULL);
@@ -174,8 +174,8 @@ test_read_key_value_file (void)
 
    /* Try to get a key which is on line 101 of the file
     * (we stop reading at line 100) */
-   _mongoc_linux_distro_scanner_read_key_val_file (
-      OS_RELEASE_FILE_DIR "/example-key-val-file.txt",
+   _mongoc_linux_distro_scanner_read_key_value_file (
+      OS_RELEASE_FILE_DIR "/example-key-value-file.txt",
       "lastkey", -1, &name,
       "normalkey", -1, &version);
    ASSERT (name == NULL);
