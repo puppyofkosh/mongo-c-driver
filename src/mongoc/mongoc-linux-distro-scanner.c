@@ -36,24 +36,27 @@
  * Return 0 on failure or EOF.
  */
 static size_t
-_fgets_wrapper (char   *buffer,
-                size_t  buffer_size,
-                FILE    *f)
+_fgets_wrapper (char  *buffer,
+                size_t buffer_size,
+                FILE  *f)
 {
    char *fgets_res;
    size_t len;
 
    fgets_res = fgets (buffer, buffer_size, f);
+
    if (!fgets_res) {
       /* Didn't read anything. Empty file or error. */
       if (ferror (f)) {
          TRACE ("fgets() failed with error %d", errno);
       }
+
       return 0;
    }
 
    /* Chop off trailing \n */
    len = strlen (buffer);
+
    if (len > 0 && buffer[len - 1] == '\n') {
       buffer[len - 1] = '\0';
       len--;
@@ -142,7 +145,7 @@ _mongoc_linux_distro_scanner_read_key_value_file (const char  *path,
 {
    const int max_lines = 100;
    int lines_read = 0;
-   char *buffer = NULL;
+   char buffer[MAX_LINE_LENGTH];
    size_t buflen;
    FILE *f;
 
@@ -171,10 +174,8 @@ _mongoc_linux_distro_scanner_read_key_value_file (const char  *path,
       EXIT;
    }
 
-   buffer = bson_malloc (MAX_LINE_LENGTH);
-
    while (lines_read < max_lines) {
-      buflen = _fgets_wrapper (buffer, MAX_LINE_LENGTH, f);
+      buflen = _fgets_wrapper (buffer, sizeof (buffer), f);
 
       if (buflen == 0) {
          /* Error or eof */
@@ -192,8 +193,6 @@ _mongoc_linux_distro_scanner_read_key_value_file (const char  *path,
 
       lines_read++;
    }
-
-   bson_free (buffer);
 
    fclose (f);
    EXIT;
@@ -237,9 +236,10 @@ _get_first_existing (const char **paths)
  * (even if the string is empty).
  */
 void
-_mongoc_linux_distro_scanner_split_line_by_release (const char  *line,
-                                                    char       **name,
-                                                    char       **version)
+_mongoc_linux_distro_scanner_split_line_by_release (const char *line,
+                                                    ssize_t     line_len,
+                                                    char      **name,
+                                                    char      **version)
 {
    const char *needle_loc;
    const char *const needle = " release ";
@@ -247,6 +247,10 @@ _mongoc_linux_distro_scanner_split_line_by_release (const char  *line,
 
    *name = NULL;
    *version = NULL;
+
+   if (line_len < 0) {
+      line_len = strlen (line);
+   }
 
    needle_loc = strstr (line, needle);
 
@@ -263,7 +267,7 @@ _mongoc_linux_distro_scanner_split_line_by_release (const char  *line,
 
    version_string = needle_loc + strlen (needle);
 
-   if (strlen (version_string) == 0) {
+   if (version_string == line + line_len) {
       /* Weird. The file just ended with "release " */
       return;
    }
@@ -281,10 +285,11 @@ _mongoc_linux_distro_scanner_read_generic_release_file (const char **paths,
 {
    const char *path;
    size_t buflen;
-   char *buffer = NULL;
-   const size_t buffer_size = METADATA_OS_NAME_MAX +
-      METADATA_OS_VERSION_MAX +
-      10;
+   enum N { buffer_size =
+               METADATA_OS_NAME_MAX +
+               METADATA_OS_VERSION_MAX +
+               10 };
+   char buffer[buffer_size];
    FILE *f;
 
    ENTRY;
@@ -307,19 +312,17 @@ _mongoc_linux_distro_scanner_read_generic_release_file (const char **paths,
    }
 
    /* Read the first line of the file, look for the word "release" */
-   buffer = bson_malloc (buffer_size);
    buflen = _fgets_wrapper (buffer, buffer_size, f);
 
    if (buflen > 0) {
       TRACE ("Trying to split buffer with contents %s", buffer);
       /* Try splitting the string. If we can't it'll store everything in
        * *name. */
-      _mongoc_linux_distro_scanner_split_line_by_release (buffer,
+      _mongoc_linux_distro_scanner_split_line_by_release (buffer, buflen,
                                                           name, version);
    }
 
    /* use regular free() on buffer since it's malloced by getline */
-   bson_free (buffer);
    fclose (f);
 
    EXIT;
