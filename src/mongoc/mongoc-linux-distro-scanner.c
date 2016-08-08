@@ -285,11 +285,7 @@ _mongoc_linux_distro_scanner_read_generic_release_file (const char **paths,
 {
    const char *path;
    size_t buflen;
-   enum N { buffer_size =
-               METADATA_OS_NAME_MAX +
-               METADATA_OS_VERSION_MAX +
-               10 };
-   char buffer[buffer_size];
+   char buffer[MAX_LINE_LENGTH];
    FILE *f;
 
    ENTRY;
@@ -312,7 +308,7 @@ _mongoc_linux_distro_scanner_read_generic_release_file (const char **paths,
    }
 
    /* Read the first line of the file, look for the word "release" */
-   buflen = _fgets_wrapper (buffer, buffer_size, f);
+   buflen = _fgets_wrapper (buffer, sizeof (buffer), f);
 
    if (buflen > 0) {
       TRACE ("Trying to split buffer with contents %s", buffer);
