@@ -413,9 +413,17 @@ test_mongoc_metadata_cannot_send (void)
    _reset_metadata ();
 }
 
+static void
+test_platform (void)
+{
+   cflag_runner_fixme ();
+}
+
 void
 test_metadata_install (TestSuite *suite)
 {
+   TestSuite_Add (suite, "/ClientMetadata/fixme_test",
+                  test_platform);
    TestSuite_Add (suite, "/ClientMetadata/appname_in_uri",
                   test_mongoc_metadata_appname_in_uri);
    TestSuite_Add (suite, "/ClientMetadata/appname_frozen_single",
