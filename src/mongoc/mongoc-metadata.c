@@ -39,11 +39,12 @@
 static mongoc_metadata_t gMongocMetadata;
 
 static bool
-_is_string_in (const char *needle,
-               size_t needle_len,
+_is_string_in (const char  *needle,
+               size_t       needle_len,
                const char **haystack)
 {
    const char **f;
+
    for (f = &haystack[0]; *f; f++) {
       if (strlen (*f) == needle_len && !strncmp (needle, *f, needle_len)) {
          return true;
@@ -54,7 +55,7 @@ _is_string_in (const char *needle,
 
 static bool
 _is_cflag_really_interesting (const char *flag,
-                              size_t flag_len)
+                              size_t      flag_len)
 {
    const char *cool_flags[] = {
       "-fno-unroll-loops",
@@ -62,31 +63,34 @@ _is_cflag_really_interesting (const char *flag,
       "-O2",
       NULL
    };
+
    return _is_string_in (flag, flag_len, cool_flags);
 }
 
 static bool
 _is_cflag_not_boring (const char *flag,
-                      size_t flag_len) {
+                      size_t      flag_len)
+{
    /* Don't care about warnings */
    const char *boring_prefix = "-W";
    const size_t boring_prefix_len = strlen (boring_prefix);
 
-   if (flag_len > strlen(boring_prefix) &&
+   if (flag_len > strlen (boring_prefix) &&
        !strncmp (flag, boring_prefix, boring_prefix_len)) {
       return false;
    }
+
    return true;
 }
 
 /* Return number of bytes written to buffer */
 static size_t
-_handle_word (char       *buffer,
-              size_t      buffer_size,
-              size_t      bytes_written,
-              bool        (*is_interesting) (const char *, size_t),
-              const char *word,
-              size_t      word_len)
+_handle_word (char        *buffer,
+              size_t       buffer_size,
+              size_t       bytes_written,
+              bool       (*is_interesting)(const char *, size_t),
+              const char  *word,
+              size_t       word_len)
 {
    size_t amount_to_copy = 0;
    bool should_add_space = bytes_written > 0;
@@ -94,7 +98,8 @@ _handle_word (char       *buffer,
    buffer += bytes_written;
    buffer_size -= bytes_written;
 
-   fprintf (stderr, "Found a word %.*s\n", (int)word_len, word);
+   fprintf (stderr, "Found a word %.*s\n", (int) word_len, word);
+
    if (is_interesting (word, word_len)) {
       /* copy as much as we can into the buffer */
       if (should_add_space) {
@@ -102,6 +107,7 @@ _handle_word (char       *buffer,
          buffer_size--;
          buffer++;
       }
+
       amount_to_copy = BSON_MIN (buffer_size, word_len);
       strncpy (buffer, word, amount_to_copy);
 
@@ -118,11 +124,12 @@ _handle_word (char       *buffer,
  * buffer will NOT be null terminated at the end!
  */
 static size_t
-_get_interesting_cflags (char   *buffer,
-                         size_t  buffer_size,
-                         bool    (*is_interesting) (const char *, size_t))
+_get_interesting_cflags (char    *buffer,
+                         size_t   buffer_size,
+                         bool   (*is_interesting)(const char *, size_t))
 {
-   const char *CFLAGS = " -Wall -ftrapv -Wno-deprecated-declarations -Wno-cast-align -Wno-unneeded-internal-declaration -O2";
+   const char *CFLAGS =
+      " -Wall -ftrapv -Wno-deprecated-declarations -Wno-cast-align -Wno-unneeded-internal-declaration -O2";
    const char *c;
    const char *current_word = NULL;
    size_t bytes_written = 0;
@@ -134,6 +141,7 @@ _get_interesting_cflags (char   *buffer,
             current_word = c;
             fprintf (stderr, "Starting word %s\n", current_word);
          }
+
          continue;
       }
 
@@ -170,10 +178,12 @@ _get_interesting_cflags (char   *buffer,
 }
 
 /* REMOVE THIS */
-void cflag_runner_fixme (void)
+void
+cflag_runner_fixme (void)
 {
    char buffer[512];
    size_t s;
+
    fprintf (stderr, "Step 1\n");
    /* Step 1: Search for REALLY interesting cflags */
    s = _get_interesting_cflags (buffer, sizeof (buffer),
@@ -229,6 +239,7 @@ _get_os_name (void)
    if (uname (&system_info) >= 0) {
       return bson_strndup (system_info.sysname, METADATA_OS_NAME_MAX);
    }
+
 #endif
 
    return NULL;
