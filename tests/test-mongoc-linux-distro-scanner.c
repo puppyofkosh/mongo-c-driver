@@ -217,12 +217,6 @@ test_distro_scanner_reads (void)
 
    _mongoc_linux_distro_scanner_get_distro (&name, &version);
 
-   /*
-    * TODO: Remove this. Just for fun on the evergreen build
-    */
-   fprintf (stderr, "name: %s version: %s\n", name, version);
-   /* Remove it! */
-
 #ifdef __linux__
    ASSERT (name);
    ASSERT (strlen (name) > 0);

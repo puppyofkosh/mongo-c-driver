@@ -29,16 +29,16 @@
 #include "mongoc-util-private.h"
 #include "mongoc-version.h"
 
-#define MAX_LINE_LENGTH 2048
+#define LINE_BUFFER_SIZE 1024
 
 /*
  * fgets() wrapper which removes '\n' at the end of the string
  * Return 0 on failure or EOF.
  */
 static size_t
-_fgets_wrapper (char  *buffer,
-                size_t buffer_size,
-                FILE  *f)
+_fgets_wrapper (char   *buffer,
+                size_t  buffer_size,
+                FILE   *f)
 {
    char *fgets_res;
    size_t len;
@@ -145,7 +145,7 @@ _mongoc_linux_distro_scanner_read_key_value_file (const char  *path,
 {
    const int max_lines = 100;
    int lines_read = 0;
-   char buffer[MAX_LINE_LENGTH];
+   char buffer[LINE_BUFFER_SIZE];
    size_t buflen;
    FILE *f;
 
@@ -285,7 +285,7 @@ _mongoc_linux_distro_scanner_read_generic_release_file (const char **paths,
 {
    const char *path;
    size_t buflen;
-   char buffer[MAX_LINE_LENGTH];
+   char buffer[LINE_BUFFER_SIZE];
    FILE *f;
 
    ENTRY;
