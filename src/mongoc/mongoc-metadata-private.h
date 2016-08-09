@@ -61,9 +61,9 @@ bool               _mongoc_metadata_build_doc_with_application (bson_t     *doc,
 void               _mongoc_metadata_freeze                     (void);
 mongoc_metadata_t *_mongoc_metadata_get                        (void);
 bool               _mongoc_metadata_appname_is_valid           (const char *appname);
-
-/* FIXME */
-void               cflag_runner_fixme (void);
+size_t             _mongoc_metadata_get_interesting_cflags     (const char  *cflags,
+                                                                char        *buffer,
+                                                                size_t       buffer_size);
 BSON_END_DECLS
 
 #endif

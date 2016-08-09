@@ -39,51 +39,38 @@
 static mongoc_metadata_t gMongocMetadata;
 
 static bool
-_is_string_in (const char  *needle,
-               size_t       needle_len,
-               const char **haystack)
+_is_cflag_boring (const char *flag,
+                  size_t      flag_len)
 {
-   const char **f;
-
-   for (f = &haystack[0]; *f; f++) {
-      if (strlen (*f) == needle_len && !strncmp (needle, *f, needle_len)) {
-         return true;
-      }
-   }
-   return false;
-}
-
-static bool
-_is_cflag_really_interesting (const char *flag,
-                              size_t      flag_len)
-{
-   const char *cool_flags[] = {
-      "-fno-unroll-loops",
-      "-ftrapv",
-      "-O2",
-      NULL
-   };
-
-   return _is_string_in (flag, flag_len, cool_flags);
-}
-
-static bool
-_is_cflag_not_boring (const char *flag,
-                      size_t      flag_len)
-{
-   /* Don't care about warnings */
+   /* Don't care about warning flags */
    const char *boring_prefix = "-W";
    const size_t boring_prefix_len = strlen (boring_prefix);
 
    if (flag_len > strlen (boring_prefix) &&
        !strncmp (flag, boring_prefix, boring_prefix_len)) {
+      return true;
+   }
+
+   return false;
+}
+
+static bool
+_is_cflag_interesting (const char *flag,
+                       size_t      flag_len)
+{
+   if (_is_cflag_boring (flag, flag_len)) {
       return false;
    }
+
+   /* TODO: Probably other checks can go here. Ideas? */
 
    return true;
 }
 
-/* Return number of bytes written to buffer */
+/*
+ * Helper function for _get_interesting_strings.
+ * Returns number of bytes written to buffer
+ */
 static size_t
 _handle_word (char        *buffer,
               size_t       buffer_size,
@@ -92,76 +79,75 @@ _handle_word (char        *buffer,
               const char  *word,
               size_t       word_len)
 {
-   size_t amount_to_copy = 0;
+   size_t total_bytes_copied = 0;
+   size_t bytes_to_copy;
    bool should_add_space = bytes_written > 0;
 
+   BSON_ASSERT (bytes_written <= buffer_size);
+   if (bytes_written == buffer_size) {
+      return 0;
+   }
+
+   if (!is_interesting (word, word_len)) {
+      return 0;
+   }
+
+   /* Pretend like the buffer starts at where we last wrote. */
    buffer += bytes_written;
    buffer_size -= bytes_written;
 
-   fprintf (stderr, "Found a word %.*s\n", (int) word_len, word);
-
-   if (is_interesting (word, word_len)) {
-      /* copy as much as we can into the buffer */
-      if (should_add_space) {
-         buffer[0] = ' ';
-         buffer_size--;
-         buffer++;
-      }
-
-      amount_to_copy = BSON_MIN (buffer_size, word_len);
-      strncpy (buffer, word, amount_to_copy);
-
-      if (should_add_space) {
-         amount_to_copy++;
-      }
+   if (should_add_space) {
+      buffer[0] = ' ';
+      buffer_size--;
+      buffer++;
+      total_bytes_copied++;
    }
 
-   return amount_to_copy;
+   /* copy as much as we can */
+   bytes_to_copy = BSON_MIN (buffer_size, word_len);
+   strncpy (buffer, word, bytes_to_copy);
+
+   total_bytes_copied += bytes_to_copy;
+   return total_bytes_copied;
 }
 
 /*
- * Store the interesting cflags into buffer, writing at most max_chars
- * buffer will NOT be null terminated at the end!
+ * Go through flags in cflags (cflags should be of form: "-flag1 -flag2 -flag3"
+ * and any flag that satisfies the is_interesting predicate
+ * (like is_interesting ("-flag1")) gets stored into buffer.
  */
 static size_t
-_get_interesting_cflags (char    *buffer,
-                         size_t   buffer_size,
-                         bool   (*is_interesting)(const char *, size_t))
+_get_interesting_strings (const char  *cflags,
+                          char        *buffer,
+                          size_t       buffer_size,
+                          bool       (*is_interesting)(const char *, size_t))
 {
-   const char *CFLAGS =
-      " -Wall -ftrapv -Wno-deprecated-declarations -Wno-cast-align -Wno-unneeded-internal-declaration -O2";
    const char *c;
    const char *current_word = NULL;
    size_t bytes_written = 0;
 
-   for (c = CFLAGS; *c && bytes_written < buffer_size; c++) {
-      if (!isspace (*c)) {
+   for (c = cflags; *c && bytes_written < buffer_size; c++) {
+      if (isspace (*c)) {
          if (current_word == NULL) {
-            /* Starting a new word */
-            current_word = c;
-            fprintf (stderr, "Starting word %s\n", current_word);
+            /* We're still at the beginning of the string, and it's been
+             * all spaces so far */
+            continue;
          }
 
-         continue;
+         /* We found a whole word. */
+         bytes_written += _handle_word (buffer,
+                                        buffer_size - 1,
+                                        bytes_written,
+                                        is_interesting,
+                                        current_word,
+                                        c - current_word);
+
+         /* Go back to search mode, looking for words */
+         current_word = NULL;
+      } else if (current_word == NULL) {
+         /* Starting a new word */
+         current_word = c;
       }
-
-      /* We encountered a space! */
-      if (current_word == NULL) {
-         /* We're still at the beginning of the string, and it's been
-          * all spaces so far */
-         continue;
-      }
-
-      /* We found a whole word. */
-      bytes_written += _handle_word (buffer,
-                                     buffer_size,
-                                     bytes_written,
-                                     is_interesting,
-                                     current_word,
-                                     c - current_word);
-
-      /* Go back to search mode, looking for words */
-      current_word = NULL;
    }
 
    if (current_word) {
@@ -174,30 +160,18 @@ _get_interesting_cflags (char    *buffer,
    }
 
    BSON_ASSERT (bytes_written <= buffer_size);
+   buffer[BSON_MIN (bytes_written, buffer_size - 1)] = '\0';
    return bytes_written;
 }
 
-/* REMOVE THIS */
-void
-cflag_runner_fixme (void)
+size_t
+_mongoc_metadata_get_interesting_cflags (const char  *cflags,
+                                         char        *buffer,
+                                         size_t       buffer_size)
 {
-   char buffer[512];
-   size_t s;
-
-   fprintf (stderr, "Step 1\n");
-   /* Step 1: Search for REALLY interesting cflags */
-   s = _get_interesting_cflags (buffer, sizeof (buffer),
-                                _is_cflag_really_interesting);
-
-   fprintf (stderr, "Step 2\n");
-   /* Grab all the cflags we can which aren't boring */
-   s = _get_interesting_cflags (buffer + s, sizeof (buffer) - s,
-                                _is_cflag_not_boring);
-   fprintf (stderr, "Got %s\nlen %ld", buffer, s);
-
-   /* TODO: Maybe zero out parts of the buffer we've already copied?*/
+   return _get_interesting_strings (cflags, buffer, buffer_size,
+                                    _is_cflag_interesting);
 }
-
 
 static char *
 _get_platform_string (void)

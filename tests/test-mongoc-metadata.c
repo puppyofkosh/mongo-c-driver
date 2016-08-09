@@ -416,13 +416,30 @@ test_mongoc_metadata_cannot_send (void)
 static void
 test_platform (void)
 {
-   cflag_runner_fixme ();
+   char buffer[512];
+   char buffer2[16];
+   size_t s;
+   /* Has leading and trailing spaces */
+   const char *example_cflags =
+      " -Wall -ftrapv -Wno-deprecated-declarations -Wno-cast-align -Wno-unneeded-internal-declaration -O2 ";
+   const char *example_cflags2 =
+      "-ftrapv -anunknownflag -fno-inline";
+
+   s = _mongoc_metadata_get_interesting_cflags (example_cflags, buffer,
+                                                sizeof (buffer));
+   ASSERT_CMPSTR (buffer, "-ftrapv -O2");
+
+   /* Case where we run out of space in the buffer */
+   s = _mongoc_metadata_get_interesting_cflags (example_cflags2, buffer2,
+                                                sizeof (buffer2));
+   ASSERT (strlen (buffer2) == sizeof (buffer2) - 1);
+   ASSERT (!strncmp (buffer2, example_cflags2, sizeof (buffer2) - 1));
 }
 
 void
 test_metadata_install (TestSuite *suite)
 {
-   TestSuite_Add (suite, "/ClientMetadata/fixme_test",
+   TestSuite_Add (suite, "/ClientMetadata/cflag_parser_test",
                   test_platform);
    TestSuite_Add (suite, "/ClientMetadata/appname_in_uri",
                   test_mongoc_metadata_appname_in_uri);
